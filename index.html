@@ -1,0 +1,33 @@
+<html>
+<head>
+<!--  Including the chessboardjs files:-->
+    <script src="./js/chessboard-0.3.0.js"></script>
+    <link rel="stylesheet" href="css/chessboard-0.3.0.min.css">
+
+<!--  Including jQuery, another tool chessboardjs uses:-->
+    <script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.2/chess.js"></script>
+
+  </head>
+<body>
+  <div id="board" style="width: 400px"></div>
+  </body>
+  <!-- <<script>>
+    postdisplay['init-chess-board'] = function (taskName) {
+    	delete postdisplay[taskName]; // single-use task
+    	ChessBoard('board');
+    };
+    <</script>> -->
+  <input type="button" id="startPositionBtn5" value="|<" />
+  <input type="button" id="prevBtn5" value="<" />
+  <input type="button" id="nextBtn5" value=">" />
+  <input type="button" id="endPositionBtn5" value=">|" />
+  <p><span id="pgn5"></span></p>
+
+<!--
+  Now including our own custom JS
+  Note that we could write JS directly in between the script tags if you'd
+  rather, but i didn't want to so i put it in a new file.
+-->
+  <script src="./script.js"></script>
+</html>
