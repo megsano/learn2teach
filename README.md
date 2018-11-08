@@ -1,2 +1,2 @@
 # learn2teach
-CS 221 project 
+An AI agent that fosters game learning by giving advice and hints at the right times to maximize students' learning. 
