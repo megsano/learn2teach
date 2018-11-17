@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function
+import random
 import re, sys, time
 from itertools import count
 from collections import OrderedDict, namedtuple
@@ -137,7 +138,7 @@ class Position(namedtuple('Position', 'board score wc bc ep kp')):
     kp - the king passant square
     """
 
-    def gen_moves(self):
+    def gen_moves(self, notDQN):
         # For each of our pieces, iterate through each possible 'ray' of moves,
         # as defined in the 'directions' map. The rays are broken e.g. by
         # captures or immediately in case of pieces such as knights.
@@ -159,6 +160,36 @@ class Position(namedtuple('Position', 'board score wc bc ep kp')):
                     # Castling, by sliding the rook next to the king
                     if i == A1 and self.board[j+E] == 'K' and self.wc[0]: yield (j+E, j+W)
                     if i == H1 and self.board[j+W] == 'K' and self.wc[1]: yield (j+W, j+E)
+        # For each of our pieces, iterate through each possible 'ray' of moves,
+        # as defined in the 'directions' map. The rays are broken e.g. by
+        # captures or immediately in case of pieces such as knights.
+        # for i, p in enumerate(self.board):
+        #     if notDQN:
+        #         if not p.isupper(): continue
+        #     else:
+        #         if not p.islower(): continue
+        #     for d in directions[p.upper()]:
+        #         for j in count(i+d, d):
+        #             q = self.board[j]
+        #             # Stay inside the board, and off friendly pieces
+        #             if notDQN:
+        #                 if q.isspace() or q.isupper(): break
+        #             else:
+        #                 if q.isspace() or q.islower(): break
+        #             # Pawn move, double move and capture
+        #             if p.upper() == 'P' and d in (N, N+N) and q != '.': break
+        #             if p.upper() == 'P' and d == N+N and (i < A1+N or self.board[i+N] != '.'): break
+        #             if p.upper() == 'P' and d in (N+W, N+E) and q == '.' and j not in (self.ep, self.kp): break
+        #             # Move it
+        #             yield (i, j)
+        #             # Stop crawlers from sliding, and sliding after captures
+        #             if notDQN:
+        #                 if p.upper() in 'PNK' or q.islower(): break
+        #             else:
+        #                 if p.upper() in 'PNK' or q.isupper(): break
+        #             # Castling, by sliding the rook next to the king
+        #             if i == A1 and self.board[j+E] == 'K' and self.wc[0]: yield (j+E, j+W)
+        #             if i == H1 and self.board[j+W] == 'K' and self.wc[1]: yield (j+W, j+E)
 
     def rotate(self):
         ''' Rotates the board, preserving enpassant '''
@@ -173,14 +204,17 @@ class Position(namedtuple('Position', 'board score wc bc ep kp')):
             self.board[::-1].swapcase(), -self.score,
             self.bc, self.wc, 0, 0)
 
-    def move(self, move):
+    def move(self, move, isDQN):
         i, j = move
         p, q = self.board[i], self.board[j]
         put = lambda board, i, p: board[:i] + p + board[i+1:]
         # Copy variables and reset ep and kp
         board = self.board
         wc, bc, ep, kp = self.wc, self.bc, 0, 0
-        score = self.score + self.value(move)
+        if not isDQN:
+            score = self.score + self.value(move)
+        else:
+            score = 0 ## ##CHANGE3D##
         # Actual move
         board = put(board, j, board[i])
         board = put(board, i, '.')
@@ -210,7 +244,7 @@ class Position(namedtuple('Position', 'board score wc bc ep kp')):
 
     # to get new state for q-learning
     def getNewState(self, move):
-        print("move: ", move)
+        #print("move: ", move)
         i,j = move
         p, q = self.board[i], self.board[j]
         put = lambda board, i, p: board[:i] + p + board[i+1:]
@@ -248,7 +282,7 @@ class Position(namedtuple('Position', 'board score wc bc ep kp')):
             if j - i in (N+W, N+E) and q == '.':
                 new_state = put(new_state, j+S, '.')
         # We rotate the returned position, so it's ready for the next player
-        return Position(new_state, 0, wc, bc, ep, kp).rotate()
+        return Position(new_state, 0, wc, bc, ep, kp)
 
     def value(self, move):
         i, j = move
@@ -271,7 +305,8 @@ class Position(namedtuple('Position', 'board score wc bc ep kp')):
                 score += pst['Q'][j] - pst['P'][j]
             if j == self.ep:
                 score += pst['P'][119-(j+S)]
-        return score
+        mult = 0.2 * random.random() + 0.9 #CHANGEDD used to not have mult
+        return score * mult
 
 ###############################################################################
 # Search logic
@@ -346,11 +381,11 @@ class Searcher:
             # Then killer move. We search it twice, but the tp will fix things for us. Note, we don't have to check for legality, since we've already done it before. Also note that in QS the killer must be a capture, otherwise we will be non deterministic.
             killer = self.tp_move.get(pos)
             if killer and (depth > 0 or pos.value(killer) >= QS_LIMIT):
-                yield killer, -self.bound(pos.move(killer), 1-gamma, depth-1, root=False)
+                yield killer, -self.bound(pos.move(killer, False), 1-gamma, depth-1, root=False)
             # Then all the other moves
-            for move in sorted(pos.gen_moves(), key=pos.value, reverse=True):
+            for move in sorted(pos.gen_moves(True), key=pos.value, reverse=True): ## maybe false
                 if depth > 0 or pos.value(move) >= QS_LIMIT:
-                    yield move, -self.bound(pos.move(move), 1-gamma, depth-1, root=False)
+                    yield move, -self.bound(pos.move(move, False), 1-gamma, depth-1, root=False)
 
         # Run through the moves, shortcutting when possible
         best = -MATE_UPPER
@@ -372,8 +407,8 @@ class Searcher:
         # but only if depth == 1, so that's probably fair enough.
         # (Btw, at depth 1 we can also mate without realizing.)
         if best < gamma and best < 0 and depth > 0:
-            is_dead = lambda pos: any(pos.value(m) >= MATE_LOWER for m in pos.gen_moves())
-            if all(is_dead(pos.move(m)) for m in pos.gen_moves()):
+            is_dead = lambda pos: any(pos.value(m) >= MATE_LOWER for m in pos.gen_moves(True)) ## maybe false
+            if all(is_dead(pos.move(m, False)) for m in pos.gen_moves(True)): ## maybe false
                 in_check = is_dead(pos.nullmove())
                 best = -MATE_UPPER if in_check else 0
 
@@ -513,6 +548,7 @@ def print_pos(pos):
 
 def play():
     pos = Position(initial, 0, (True,True), (True,True), 0, 0) # game.py stuff
+    #print(pos.board)
     searcher = Searcher()
     moves_list = []
     while True:
@@ -529,10 +565,10 @@ def play():
         # We query the user until she enters a (pseudo) legal move.
         move = None
         while move not in pos.gen_moves():
-            print([m for m in pos.gen_moves()])
+            #print([m for m in pos.gen_moves()])
             your_move = input('Your move: ')
             ## input board state to model and get action
-            print(pos.board)
+            #print(pos.board)
             match = re.match('([a-h][1-8])'*2, your_move)
             if match:
                 move = parse(match.group(1)), parse(match.group(2))

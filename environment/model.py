@@ -11,7 +11,7 @@ from pystockfish import *
 deep = Engine(depth=20)
 
 ###############################################################################
-# Piece-Square tables. Tune these to change sunfish's behaviour
+# Variables and constants for sunfish
 ###############################################################################
 
 piece = { 'P': 100, 'N': 280, 'B': 320, 'R': 479, 'Q': 929, 'K': 60000 }
@@ -71,10 +71,6 @@ for k, table in pst.items():
     pst[k] = sum((padrow(table[i*8:i*8+8]) for i in range(8)), ())
     pst[k] = (0,)*20 + pst[k] + (0,)*20
 
-###############################################################################
-# Global constants
-###############################################################################
-
 # Our board is represented as a 120 character string. The padding allows for
 # fast detection of moves that don't stay within the board.
 A1, H1, A8, H8 = 91, 98, 21, 28
@@ -119,21 +115,19 @@ TABLE_SIZE = 1e8
 QS_LIMIT = 150
 EVAL_ROUGHNESS = 20
 
-
-
-
-
-EPISODES = 1000
+###############################################################################
+# DQN Model
+###############################################################################
 
 class DQNAgent:
-    def __init__(self, state_size=18, action_size=1889):
+    def __init__(self, state_size=18, action_size=1856):
         self.state_size = state_size
         self.action_size = action_size
         self.memory = deque(maxlen=2000)
         self.gamma = 0.95    # discount rate
-        self.epsilon = 0.1  # exploration rate
-        self.epsilon_min = 0.01
-        self.epsilon_decay = 0.995
+        self.epsilon = 0.1 # exploration rate
+        self.epsilon_min = 0.1
+        self.epsilon_decay = 1
         self.learning_rate = 0.001
         self.model = self._build_model()
 
@@ -151,12 +145,14 @@ class DQNAgent:
         self.memory.append((state, action, reward, next_state, done))
 
     def act(self, state, valid_move_indices):
-        print (len(valid_move_indices))
+        #print (len(valid_move_indices))
         if np.random.rand() <= self.epsilon:
             random_action_index = random.randrange(self.action_size)
-            while random_action_index not in valid_move_indices:
-                random_action_index = random.randrange(self.action_size)
-            return random_action_index
+            if random_action_index in valid_move_indices:
+                return random_action_index
+            # while random_action_index not in valid_move_indices:
+            #     random_action_index = random.randrange(self.action_size)
+            # return random_action_index
         act_values = self.model.predict(state)
         new_act_values = []
         for i,val in enumerate(act_values[0]):
@@ -164,9 +160,7 @@ class DQNAgent:
                 new_act_values.append(val)
             else:
                 new_act_values.append(0.0)
-        #valid_act_values = [act_values[i] for i in valid_move_indices]
-        #print("returned action", np.argmax(valid_act_values[0]))
-        return np.argmax(new_act_values)  # returns action
+        return np.argmax(new_act_values)
 
     def replay(self, batch_size):
         minibatch = random.sample(self.memory, batch_size)
@@ -187,6 +181,14 @@ class DQNAgent:
     def save(self, name):
         self.model.save_weights(name)
 
+###############################################################################
+# Helper functions
+###############################################################################
+
+'''
+Converts the 64-character representation of the board state used in
+game.py to a 64-bit representation.
+'''
 
 def toBit(pos):
     board = pos.board
@@ -213,16 +215,129 @@ def toBit(pos):
     state = np.reshape(state, (1,18))
     return state
 
+'''
+Retrieves the king's position at any given board state.
+'''
+
+def getKingPos(boardString, piece_letter):
+    #print(piece_letter)
+    # boardString_list = []
+    # for row in position.board.split("\n"):
+    #     if row != "" and not row.isspace():
+    #         boardString_list.append(row)
+    # boardString = "".join(boardString_list)#position.board.split("\n")[3:11])
+    # #print("length of board string before reducing empty spaces: ", str(len(boardString)))
+    # boardString = boardString.replace(" ", "")
+    #print(splitted)
+    if len(boardString) != 64:
+        print("boardString length = " + str(len(boardString)))
+    splitted = []
+    for i in range(8):
+        splitted.append(boardString[8 * i : 8 * i + 8])
+    for l, line in enumerate(splitted): # "".join(board.split('\n')[:-1])
+        #print(line)
+        for col in range(8):
+            #print (line[col])
+            if line[col] == piece_letter:
+                return (l, col)
+
+'''
+Checks if the input player is in check.
+'''
+def inCheck(position, checkCurrentPlayer):
+    pieceLetters = ["P", "N", "B", "R", "Q", "K"]
+    king = 'k'
+    if checkCurrentPlayer:
+        pieceLetters = ["p", "n", "b", "r", "q", "k"] ## case is same for opponent and king
+        king = 'K'
+    #print(king)
+    # pieceLetters = ["p", "n", "b", "r", "q", "k"]
+    # if not checkCurrentPlayer:
+    #     pieceLetters = ["P", "N", "B", "R", "Q", "K"] ## case is same for opponent and king
+     ## changed from pieceLetters[-1] # it's when it's lowercase that getKingPos error happens
+    #print(position.board.split("\n"))
+    boardString_list = []
+    for row in position.board.split("\n"):
+        if row != "" and not row.isspace():
+            boardString_list.append(row)
+    boardString = "".join(boardString_list)#position.board.split("\n")[3:11])
+    #print("length of board string before reducing empty spaces: ", str(len(boardString)))
+    boardString = boardString.replace(" ", "")
+    #print("length of board string: ", str(len(boardString)))
+    kRow, kCol = getKingPos(boardString, king)
+    for row in range(8):
+        for col in range(8):
+            pieceIndex = 8 * row + col
+            piece = boardString[pieceIndex]
+            if piece == pieceLetters[0]:
+                if row + 1 == kRow and abs(col - kCol) == 1:
+                    # print(pieceLetters[0])
+                    return True
+            if piece == pieceLetters[1]:
+                if abs(row - kRow) == 2 and abs(col - kCol) == 1:
+                    # print(pieceLetters[1])
+                    return True
+                if abs(row - kRow) == 1 and abs(col - kCol) == 2:
+                    # print(pieceLetters[1])
+                    return True
+            if piece == pieceLetters[2] or piece == pieceLetters[4]:
+                if abs(row - kRow) == abs(col - kCol):
+                    canCheck = True
+                    if (row - kRow) * (col - kCol) > 0:
+                        start = 8 * min(row, kRow) + min(col, kCol)
+                        for diagonAlley in range(abs(row - kRow) - 1):
+                            # if boardString[start + 9 * diagonAlley] != ".":
+                            #     canCheck = False
+                            if boardString[start + 9 * (diagonAlley + 1)] != ".":
+                                canCheck = False
+                        if canCheck == True:
+                            # print(piece)
+                            return True
+                    else:
+                        start = 8 * min(row, kRow) + max(col, kCol)
+                        for diagonAlley in range(abs(row - kRow) - 1):
+                            if boardString[start + 7 * (diagonAlley + 1)] != ".":
+                                canCheck = False
+                        if canCheck == True:
+                            # print(piece)
+                            return True
+            if piece == pieceLetters[3] or piece == pieceLetters[4]:
+                if row == kRow:
+                    canCheck = True
+                    for inBetween in range(min(col, kCol) + 1, max(col, kCol)):
+                        if boardString[8 * row + inBetween] != ".":
+                            canCheck = False
+                    if canCheck == True:
+                        # print(piece)
+                        return True
+                if col == kCol:
+                    canCheck = True
+                    for inBetween in range(min(row, kRow) + 1, max(row, kRow)):
+                        if boardString[8 * inBetween + col] != ".":
+                            canCheck = False
+                    if canCheck == True:
+                        # print(piece)
+                        return True
+            if piece == pieceLetters[5]:
+                if abs(row - kRow) <= 1 and abs(col - kCol) <= 1:
+                    # print(pieceLetters[5])
+                    return True
+    return False
+
+
+###############################################################################
+# Training
+###############################################################################
+
 if __name__ == "__main__":
-    #env = gym.make('CartPole-v1')
-    state_size = 18 #env.observation_space.shape[0]
-    # print(state_size)
-    action_size = 1889 #env.action_space.n
-    # print(action_size)
-    agent = DQNAgent() # call this in game
-    #agent.load("/save/cartpole-dqn.h5")
+    # Constants for training
+    EPISODES = 1000
+    state_size = 18
+    action_size = 1856
+    agent = DQNAgent()
     batch_size = 32
 
+    # Creating a list of all possible actions on the chessboard
     possible_actions = []
     for x_prev in range(2,10):
         for y_prev in range(1,9):
@@ -236,99 +351,150 @@ if __name__ == "__main__":
                         possible_actions.append((int(str(x_prev) + str(y_prev)), int(str(x_next) + str(y_next))))
                     elif abs(x_prev - x_next) == 2 and abs(y_prev - y_next) == 1:
                         possible_actions.append((int(str(x_prev) + str(y_prev)), int(str(x_next) + str(y_next))))
+    assert len(possible_actions) == action_size
 
+    # Training EPISODES times
     for e in range(EPISODES):
-        done = False
+        final_score = 0
         print ("episode: ", e)
-
-        # a game has started
-        pos = game.Position(initial, 0, (True,True), (True,True), 0, 0) # game.py stuff
-         # game.py stuff
-        searcher = game.Searcher() # game.py stuff
-        moves_list = [] # game.py stuff
-
+        done = False
+        pos = game.Position(initial, 0, (True,True), (True,True), 0, 0)
+        searcher = game.Searcher()
+        moves_list = []
         round = 0
-
-        while True:
+        while True: # While no one has won, keep playing
             round += 1
-            game.print_pos(pos)
-            rawState = pos
-            state = toBit(rawState)
-            #state = np.reshape(state, [1, state_size])
-            # just evaluating board
+            #game.print_pos(pos)
+            state = toBit(pos)
+            # computing score of board before agent makes action
             before_output = deep.bestmove()
             score_before_model_move = int(before_output['info'].split(" ")[9])
-            if pos.score <= -MATE_LOWER:
-                print("You lost")
+
+            possibly_valid_moves = [m for m in pos.gen_moves(False)]
+            possibly_valid_move_indices = [possible_actions.index(gm) for gm in possibly_valid_moves]
+
+            '''Begin check for check code'''
+            valid_move_indices = []
+            for index in possibly_valid_move_indices:
+                newPos = pos.getNewState(possible_actions[index])
+                if not inCheck(newPos, True):
+                    valid_move_indices.append(index)
+            if len(valid_move_indices) == 0:
+                if inCheck(pos, True):
+                    print("You lost, but you're getting there little one")
+                else:
+                    print("Huh.  Stalemate.  ")
+                print("episode: {}/{}, number of rounds: {}, score: {}, e: {:.2}"
+                      .format(e, EPISODES, round, final_score / float(round), agent.epsilon))
                 break
-            # asking DQN agent for action
-            move = None
-            valid_moves = [m for m in pos.gen_moves()] #### (85,65), (87, 97)
-            valid_move_indices = [possible_actions.index(gm) for gm in valid_moves]
-            # coordinates
-            dqn_move_index = agent.act(state, valid_move_indices) ## returns index of maximum value action
+            # else:
+            #     valid_move_indices = possibly_valid_move_indices
+
+            ''' End check for check code'''
+
+            # DQN chooses an action
+            #valid_moves = [m for m in pos.gen_moves()] #### (85,65), (87, 97)
+            #valid_move_indices = [possible_actions.index(gm) for gm in valid_moves]
+            dqn_move_index = agent.act(state, valid_move_indices)
+            dqn_move = possible_actions[dqn_move_index]
+            # a check that we should be removing later
             if dqn_move_index not in valid_move_indices:
                 print("made invalid move")
                 break
-            dqn_move = possible_actions[dqn_move_index]
-
-            pos = pos.move(dqn_move)
+            # flip move
+            firstPos = dqn_move[0]
+            firstPosRow = int(str(firstPos)[0])
+            firstPosCol = int(str(firstPos)[1])
+            secondPos = dqn_move[1]
+            secondPosRow = int(str(secondPos)[0])
+            secondPosCol = int(str(secondPos)[1])
+            newFirstPosRow = 11 - firstPosRow
+            newFirstPosCol = 9 - firstPosCol
+            newSecondPosRow = 11 - secondPosRow
+            newSecondPosCol = 9 -secondPosCol
+            new_dqn_move = (int(str(newFirstPosRow) + str(newFirstPosCol)), int(str(newSecondPosRow)+str(newSecondPosCol)))
+            pos = pos.move(dqn_move, True) ## used to be new_dqn_move
+            # update stockfish based on DQN action
             dqn_move_stockfish = game.render(119-dqn_move[0]) + game.render(119-dqn_move[1])
             moves_list.append(dqn_move_stockfish)
             deep.setposition(moves_list)
+            # compute score of board after agent makes action
             after_output = deep.bestmove()
             score_after_model_move = int(after_output['info'].split(" ")[9])
 
-            ## Q LEARNING PART
-            ########## next_state, reward, done, _ = env.step(action) ####### GET REWARD
-            #reward = reward if not done else -10
+            # Q-Learning
+            pos.rotate()
             new_state = toBit(pos.getNewState(dqn_move))
-            #new_state = np.reshape(new_state, [1, state_size])
             reward = score_after_model_move - score_before_model_move
+            print(reward)
+            final_score += reward
             agent.remember(state, dqn_move_index, reward, new_state, done)
             state = new_state
-            game.print_pos(pos.rotate())
 
-            if pos.score <= -MATE_LOWER:
-                print("You won")
-                done = True
+            pos.rotate() # this used to be game.print_pos(pos.rotate())
 
-            if done:
-                print("episode: {}/{}, score: {}, e: {:.2}"
-                      .format(e, EPISODES, round, agent.epsilon))
+
+            # # if checkmate happened, break out of the loop and print stats
+            # if done:
+            #     print("episode: {}/{}, score: {}, e: {:.2}"
+            #           .format(e, EPISODES, round, agent.epsilon))
+            #     break
+
+            '''Begin check for check code'''
+
+            possibly_valid_moves = [m for m in pos.gen_moves(True)]
+            #print(possibly_valid_moves)
+            possibly_valid_move_indices = [possible_actions.index(gm) for gm in possibly_valid_moves]
+            valid_move_indices = []
+            #print("possibly valid move indices: ", str(len(possibly_valid_move_indices)))
+            for index in possibly_valid_move_indices:
+                newPos = pos.getNewState(possible_actions[index])
+                #print(newPos.board)
+                if not inCheck(newPos, True):
+                    valid_move_indices.append(index)
+            if len(valid_move_indices) == 0:
+                if inCheck(pos, True):
+                    print("Hahaha! We won.")
+                else:
+                    print("Hahaha! Stalemate. ")
+                print("episode: {}/{}, number of rounds: {}, score: {}, e: {:.2}"
+                      .format(e, EPISODES, round, final_score / float(round), agent.epsilon))
                 break
+            # else:
+            #     valid_move_indices = possibly_valid_move_indices
 
-            # OPPONENT MOVE
+            ''' End check for check code'''
+
+            ''' if there is a problem in the future with valid moves, it might be because sunfish moves into check '''
+
+
+
+            # Opponent takes an action
             opponent_move, score = searcher.search(pos, secs=2)
-
             opponent_move_stockfish = game.render(119-opponent_move[0]) + game.render(119-opponent_move[1])
-            pos = pos.move(opponent_move)
+            pos = pos.move(opponent_move, False)
+            # update stockfish based on opponent action
             moves_list.append(opponent_move_stockfish)
             deep.setposition(moves_list)
-            #game.print_pos(pos.rotate())
 
-            if score == MATE_UPPER:
-                print("Checkmate!")
-                done = True
 
+            # # check for checkmate
+            # if score == MATE_UPPER:
+            #
+            #     print("episode: {}/{}, score: {}, e: {:.2}"
+            #           .format(e, EPISODES, round, agent.epsilon))
+            #     break
+
+            # take care of replay
             if len(agent.memory) > batch_size:
                 agent.replay(batch_size)
 
-            if done:
-                print("episode: {}/{}, score: {}, e: {:.2}"
-                      .format(e, EPISODES, round, agent.epsilon))
-                break
+            # # if checkmate happened, break out of the loop and print stats
+            # if done:
+            #     print("episode: {}/{}, score: {}, e: {:.2}"
+            #           .format(e, EPISODES, round, agent.epsilon))
+            #     break
 
         #     ########## OLD CODE ###########
-        # for time in range(500):
-        #     env.render()
-        #     action = agent.act(state) ## implement agent.act
-        #     if e == 0:
-        #         print (action)
-        #     next_state, reward, done, _ =env.step(action)
-        #     reward = reward if not done else -10
-        #     next_state = np.reshape(next_state, [1, state_size])
-        #     agent.remember(state, action, reward, next_state, done)
-        #     state = next_state
         # # if e % 10 == 0:
         # #     agent.save("/save/cartpole-dqn.h5")
