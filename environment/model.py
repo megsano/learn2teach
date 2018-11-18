@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 import random
+import math
 import gym
 import numpy as np
+import matplotlib.pyplot as plt
 from collections import deque
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.optimizers import Adam
 import game
 from pystockfish import *
-deep = Engine(depth=20)
 
 ###############################################################################
 # Variables and constants for sunfish
@@ -125,9 +126,9 @@ class DQNAgent:
         self.action_size = action_size
         self.memory = deque(maxlen=2000)
         self.gamma = 0.95    # discount rate
-        self.epsilon = 0.1 # exploration rate
-        self.epsilon_min = 0.1
-        self.epsilon_decay = 1
+        self.epsilon = 0.5 # exploration rate
+        self.epsilon_min = 0.36
+        self.epsilon_decay = 0.999
         self.learning_rate = 0.001
         self.model = self._build_model()
 
@@ -160,7 +161,15 @@ class DQNAgent:
                 new_act_values.append(val)
             else:
                 new_act_values.append(0.0)
-        return np.argmax(new_act_values)
+        startIndex = random.randint(0, len(new_act_values) - 1)
+        newVals = []
+        for i in range(len(new_act_values) - startIndex):
+            newVals.append(new_act_values[startIndex + i])
+        for j in range(startIndex):
+            newVals.append(new_act_values[j])
+        rotated_index = np.argmax(newVals)
+        return (rotated_index + startIndex) % len(new_act_values)
+        # return np.argmax(new_act_values)
 
     def replay(self, batch_size):
         minibatch = random.sample(self.memory, batch_size)
@@ -331,7 +340,7 @@ def inCheck(position, checkCurrentPlayer):
 
 if __name__ == "__main__":
     # Constants for training
-    EPISODES = 1000
+    EPISODES = 100
     state_size = 18
     action_size = 1856
     agent = DQNAgent()
@@ -353,8 +362,11 @@ if __name__ == "__main__":
                         possible_actions.append((int(str(x_prev) + str(y_prev)), int(str(x_next) + str(y_next))))
     assert len(possible_actions) == action_size
 
+    scores_list = []
+
     # Training EPISODES times
     for e in range(EPISODES):
+        deep = Engine(depth=20)
         final_score = 0
         print ("episode: ", e)
         done = False
@@ -364,11 +376,30 @@ if __name__ == "__main__":
         round = 0
         while True: # While no one has won, keep playing
             round += 1
+            #print("dqn to move")
             #game.print_pos(pos)
             state = toBit(pos)
             # computing score of board before agent makes action
             before_output = deep.bestmove()
-            score_before_model_move = int(before_output['info'].split(" ")[9])
+            #print ("before output info: " + before_output['info'])
+            before_output_list = before_output['info'].split(" ")
+            if 'mate' in before_output_list:
+                mate_index = before_output_list.index('mate')
+                mate_score = before_output_list[mate_index + 1]
+                score_before_model_move = -5000 #/ float(math.sqrt(float(mate_score)))
+                print("mate is in before_output_list so score is ", str(score_before_model_move))
+            else:
+                score_before_model_move = (-1)*int(before_output['info'].split(" ")[9])
+            # if we can't find cp in it, or if we find mate in it
+            # that means we are closed to being checkmated
+            # score should be a function of number after 'mate'
+
+            # if before_output['info'].split(" ")[8] == 'mate':
+            #     print("oh gr8, m8 in ", before_output['info'].split(" ")[9])
+            #     print("episode: {}/{}, number of rounds: {}, score: {}, e: {:.2}"
+            #           .format(e, EPISODES, round, final_score / float(round), agent.epsilon))
+            #     break
+
 
             possibly_valid_moves = [m for m in pos.gen_moves(False)]
             possibly_valid_move_indices = [possible_actions.index(gm) for gm in possibly_valid_moves]
@@ -382,10 +413,13 @@ if __name__ == "__main__":
             if len(valid_move_indices) == 0:
                 if inCheck(pos, True):
                     print("You lost, but you're getting there little one")
+                    #game.print_pos(pos) #CHANGEDD think this could be a good way to tell whether game goes exactly the same way every time
                 else:
                     print("Huh.  Stalemate.  ")
                 print("episode: {}/{}, number of rounds: {}, score: {}, e: {:.2}"
                       .format(e, EPISODES, round, final_score / float(round), agent.epsilon))
+                scores_list.append(final_score / float(round))
+                print (scores_list)
                 break
             # else:
             #     valid_move_indices = possibly_valid_move_indices
@@ -396,11 +430,15 @@ if __name__ == "__main__":
             #valid_moves = [m for m in pos.gen_moves()] #### (85,65), (87, 97)
             #valid_move_indices = [possible_actions.index(gm) for gm in valid_moves]
             dqn_move_index = agent.act(state, valid_move_indices)
-            dqn_move = possible_actions[dqn_move_index]
             # a check that we should be removing later
+            while dqn_move_index not in valid_move_indices:
+                dqn_move_index = random.choice(valid_move_indices)
+
             if dqn_move_index not in valid_move_indices:
                 print("made invalid move")
                 break
+
+            dqn_move = possible_actions[dqn_move_index]
             # flip move
             firstPos = dqn_move[0]
             firstPosRow = int(str(firstPos)[0])
@@ -415,23 +453,33 @@ if __name__ == "__main__":
             new_dqn_move = (int(str(newFirstPosRow) + str(newFirstPosCol)), int(str(newSecondPosRow)+str(newSecondPosCol)))
             pos = pos.move(dqn_move, True) ## used to be new_dqn_move
             # update stockfish based on DQN action
-            dqn_move_stockfish = game.render(119-dqn_move[0]) + game.render(119-dqn_move[1])
+            dqn_move_stockfish = game.render(119-new_dqn_move[0]) + game.render(119-new_dqn_move[1]) ## used to be dqn_move
             moves_list.append(dqn_move_stockfish)
+            #print("dqn move stockfish: ", str(dqn_move_stockfish))
+            #print(moves_list)
             deep.setposition(moves_list)
             # compute score of board after agent makes action
             after_output = deep.bestmove()
-            score_after_model_move = int(after_output['info'].split(" ")[9])
+            #print ("after output info: " + after_output['info'])
+            after_output_list = after_output['info'].split(" ")
+            if 'mate' in after_output_list:
+                mate_index = after_output_list.index('mate')
+                mate_score = after_output_list[mate_index + 1]
+                score_after_model_move = -5000 #/ float(math.sqrt(float(mate_score)))
+                print("mate is in after_output_list so score is ", str(score_after_model_move))
+            else:
+                score_after_model_move = (-1)*int(after_output['info'].split(" ")[9])
 
             # Q-Learning
             pos.rotate()
             new_state = toBit(pos.getNewState(dqn_move))
-            reward = score_after_model_move - score_before_model_move
-            print(reward)
+            reward = score_after_model_move - score_before_model_move #abs(score_after_model_move - score_before_model_move)*(score_after_model_move - score_before_model_move)
+            #print(reward)
             final_score += reward
             agent.remember(state, dqn_move_index, reward, new_state, done)
             state = new_state
 
-            pos.rotate() # this used to be game.print_pos(pos.rotate())
+            pos.rotate()
 
 
             # # if checkmate happened, break out of the loop and print stats
@@ -459,6 +507,13 @@ if __name__ == "__main__":
                     print("Hahaha! Stalemate. ")
                 print("episode: {}/{}, number of rounds: {}, score: {}, e: {:.2}"
                       .format(e, EPISODES, round, final_score / float(round), agent.epsilon))
+                scores_list.append(final_score / float(round))
+                print (scores_list)
+                # if e % 10 == 0:
+                #     score_list.append(final_score)
+                #     current_mean = sum(scores_list) / 10.0
+                #     if current_mean < previous_mean:
+                #         raise Exception
                 break
             # else:
             #     valid_move_indices = possibly_valid_move_indices
@@ -475,6 +530,8 @@ if __name__ == "__main__":
             pos = pos.move(opponent_move, False)
             # update stockfish based on opponent action
             moves_list.append(opponent_move_stockfish)
+            #print("opponent move stockfish: ", str(opponent_move_stockfish))
+            #print(moves_list)
             deep.setposition(moves_list)
 
 
@@ -494,7 +551,12 @@ if __name__ == "__main__":
             #     print("episode: {}/{}, score: {}, e: {:.2}"
             #           .format(e, EPISODES, round, agent.epsilon))
             #     break
-
+    print(scores_list)
+    plt.plot(scores_list)
+    plt.ylabel('average score value')
+    plt.xlabel('games')
+    plt.show()
+    agent.save('save/agent.h5')
         #     ########## OLD CODE ###########
         # # if e % 10 == 0:
         # #     agent.save("/save/cartpole-dqn.h5")
