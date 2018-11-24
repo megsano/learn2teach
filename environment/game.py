@@ -9,6 +9,7 @@ from collections import OrderedDict, namedtuple
 # from stockfish import Stockfish
 # stockfish = Stockfish('/Users/zhelyabuzhsky/Work/stockfish/stockfish-9-64')
 from pystockfish import *
+random.seed(3)
 deep = Engine(depth=20)
 # from stockfish import Stockfish
 # stockfish = Stockfish
