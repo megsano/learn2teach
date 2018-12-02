@@ -10,7 +10,6 @@ from keras.layers import Dense
 from keras.optimizers import Adam
 from keras.models import model_from_json
 from keras.models import load_model
-from keras.utils import plot_model
 import h5py
 
 # from keras import models
@@ -288,23 +287,19 @@ Input: move index
 Output: value of the move
 '''
 
-def get_move_value(move_index, moves_list, possible_actions, pos):
+def get_move_value(move_index, moves_list, possible_actions):
     before_output = deep.bestmove() # computing score of board before student agent makes action
-    assert percy_liang(moves_list, pos)
     before_output_list = before_output['info'].split(" ")
     score_before_that_move = (-1)*int(before_output_list[9]) # changed from 9
     move_tuple = possible_actions[move_index]
     move_for_stockfish = game.render(119-move_tuple[0]) + game.render(119-move_tuple[1])
     moves_list.append(move_for_stockfish)
-    past_length = len(moves_list)
     deep.setposition(moves_list) #SYNTAX!!
     after_output = deep.bestmove()
     after_output_list = after_output['info'].split(" ")
     score_after_that_move = (-1)*int(after_output_list[9]) # changed from 9
     last_thing = moves_list.pop()
-    assert len(moves_list) == past_length - 1
     deep.setposition(moves_list) #Does set and reset deep position -- probably not buggy, but look into
-    assert percy_liang(moves_list, pos)
     return score_after_that_move - score_before_that_move
 
 '''
@@ -318,50 +313,25 @@ def convert_to_nums(algebra_str):
     new_number = 10 - int(number)
     #print("converted: ", 10 * new_number + letter_as_num)
     return 10 * new_number + letter_as_num
-
-'''Had a nice shirt on Wednesday:'''
-def percy_liang(move_list, old_pos):
-    new_pos = game.Position(initial, 0, (True,True), (True,True), 0, 0) # game.py stuff
-    for i in range(len(move_list)):
-        player_bool = not i % 2 == 0 # used to be not
-        move_string = move_list[i]
-        move_nums = (convert_to_nums(move_string[0:2]),convert_to_nums(move_string[2:]))
-        new_pos = new_pos.move(move_nums, player_bool)
-    # print("move list passed into percy: ")
-    # print(move_list)
-    # print("new: ", new_pos)
-    # print("old", old_pos)
-    return new_pos.board == old_pos.board
 '''
 Get teacher state
 '''
-def getTeacherState(suggested_move_index, valid_move_indices, possible_actions, moves_list, pos): #UPDATE PARAMS IN MAIN!!!
+def getTeacherState(suggested_move_index, valid_move_indices, possible_actions, moves_list): #UPDATE PARAMS IN MAIN!!!
     had_a_nan_in_teacher_state = False
     state = []
     # state 1: difference between suggested move value and optimal move value
-    deep.setposition(moves_list) #### CCHANGED!!!!!
-    assert percy_liang(moves_list, pos)
-    # is_dqn_turn_to_move = len(moves_list) % 2 == 0
-    # if is_dqn_turn_to_move: #Possibly if not
-    #
-
     output = deep.bestmove() ## something else
-    print("what stockfish thinks is best move: ", output['move'])
-    print("valid moves of student DQN: ")
-    print([game.render(119-possible_actions[i][0]) + game.render(119-possible_actions[i][1]) for i in valid_move_indices])
-    assert percy_liang(moves_list, pos)
     #print("optimal move now: ", output['move'])
     best_move = (convert_to_nums(output['move'][0:2]),convert_to_nums(output['move'][2:]))
-
     best_move_index = possible_actions.index(best_move)
-    suggested_move_value = get_move_value(suggested_move_index, moves_list[:], possible_actions, pos)
-    optimal_move_value = get_move_value(best_move_index, moves_list[:], possible_actions, pos)
+    suggested_move_value = get_move_value(suggested_move_index, moves_list, possible_actions)
+    optimal_move_value = get_move_value(best_move_index, moves_list, possible_actions)
     diff = suggested_move_value - optimal_move_value
     state.append(diff)
     # state 2: optimal move
     valid_moves_values = []# get value of move for move in possibly_valid_move_indices
     for valid_move_index in valid_move_indices:
-        valid_moves_values.append(get_move_value(valid_move_index, moves_list[:], possible_actions, pos))
+        valid_moves_values.append(get_move_value(valid_move_index, moves_list, possible_actions))
     state.append(np.std(np.array(valid_moves_values)))
     # state 3: boolean comparing suggested and optimal
     state.append(best_move_index == suggested_move_index)
@@ -379,7 +349,7 @@ def getTeacherState(suggested_move_index, valid_move_indices, possible_actions, 
     print (optimal_piece_move_indices)
     optimal_piece_move_values = []
     for optimal_piece_move_index in optimal_piece_move_indices:
-        optimal_piece_move_values.append(get_move_value(optimal_piece_move_index, moves_list, possible_actions, pos))
+        optimal_piece_move_values.append(get_move_value(optimal_piece_move_index, moves_list, possible_actions))
     if len(optimal_piece_move_values) == 0:
         had_a_nan_in_teacher_state = True
     state.append(np.std(np.array(optimal_piece_move_values)))
@@ -389,7 +359,6 @@ def getTeacherState(suggested_move_index, valid_move_indices, possible_actions, 
         had_a_nan_in_teacher_state = True
     state = np.reshape(state, (1,4))
     #print('teacher state: ', state)
-    assert percy_liang(moves_list, pos)
     return state, optimal_piece_move_indices, best_move_index, had_a_nan_in_teacher_state
 
 
@@ -536,33 +505,21 @@ def inCheck(position, checkCurrentPlayer):
                     return True
     return False
 
-def flip_move(dqn_move):
-    firstPos = dqn_move[0]
-    firstPosRow = int(str(firstPos)[0])
-    firstPosCol = int(str(firstPos)[1])
-    secondPos = dqn_move[1]
-    secondPosRow = int(str(secondPos)[0])
-    secondPosCol = int(str(secondPos)[1])
-    newFirstPosRow = 11 - firstPosRow
-    newFirstPosCol = 9 - firstPosCol
-    newSecondPosRow = 11 - secondPosRow
-    newSecondPosCol = 9 -secondPosCol
-    new_dqn_move = (int(str(newFirstPosRow) + str(newFirstPosCol)), int(str(newSecondPosRow)+str(newSecondPosCol)))
-    return new_dqn_move
 
 ###############################################################################
 # Training
 ###############################################################################
 ##### TRAINING STUDENT WITOUT TEACHER NOW STARTING 11:25am #####
 
-def get_four_game_average_score(teacher_agent):#if __name__ == "__main__":
+if __name__ == "__main__": #def get_four_game_average_score(student_agent):
     # Constants for training
-    EPISODES = 125
+    EPISODES = 126
     student_action_size = 1856
-
-    # Initialize agents
+    teacher_agent = TeacherAgent()
     student_agent = StudentAgent()
-    #teacher_agent = TeacherAgent()
+    #filename = 'save/without_teacher_' + str(i) + '.h5'
+    #student_agent.load(filename)
+
     batch_size = 8  # changed from 32
 
     # Creating a list of all possible actions of student agent on the chessboard
@@ -640,7 +597,8 @@ def get_four_game_average_score(teacher_agent):#if __name__ == "__main__":
                 print("episode: {}/{}, number of rounds: {}, score: {}, e: {:.2}"
                       .format(e, EPISODES, round, final_score / float(round), student_agent.epsilon))
                 scores_list.append(final_score / float(round))
-                print (scores_list)
+                if print_game:
+                    print (scores_list)
                 done = True
                 break
             # else:
@@ -669,8 +627,8 @@ def get_four_game_average_score(teacher_agent):#if __name__ == "__main__":
             ''' TEACHER '''
             # get teacher state given the student's suggested move index and the state of the game
             copy_moves_list = moves_list[:]
-            teacher_state, optimal_piece_move_indices_maybe, best_move_index, had_a_nan = getTeacherState(dqn_move_index, valid_move_indices, possible_actions, copy_moves_list, pos)
-            #print('teacher state: ', teacher_state)
+            teacher_state, optimal_piece_move_indices_maybe, best_move_index, had_a_nan = getTeacherState(dqn_move_index, valid_move_indices, possible_actions, copy_moves_list)
+            print('teacher state: ', teacher_state)
             # if had_a_nan:
             #     print("Should print board")
             #     game.print_pos(pos)
@@ -683,20 +641,20 @@ def get_four_game_average_score(teacher_agent):#if __name__ == "__main__":
                 while move_index_based_on_partial not in optimal_piece_move_indices_maybe:
                      move_index_based_on_partial = random.choice(optimal_piece_move_indices_maybe)
                 dqn_move_index = move_index_based_on_partial
-                #print("Partial mint, chocolate chip mint")
+                print("Partial mint, chocolate chip mint")
                 optimal_piece_moves = []
                 for i in optimal_piece_move_indices_maybe:
                     optimal_piece_moves.append(possible_actions[i])
-                #print("optimal piece moves: ", optimal_piece_moves)
+                print("optimal piece moves: ", optimal_piece_moves)
                 # partial hint was given, check which hint that was
                 #If there's a BUGG: did we accidentally over-rotate board here?
             elif teacher_action_index == 2:
-                #print("Hole hint")
-                #print("Full hint: ", possible_actions[best_move_index])
+                print("Hole hint")
+                print("Full hint: ", possible_actions[best_move_index])
                 dqn_move_index = best_move_index
                 # full hint was given, proceed with that move
             else:
-                #print("Not a bit of a hint (no hint)")
+                print("Not a bit of a hint (no hint)")
                 assert teacher_action_index == 0
                 # no hint was given, proceed with student's suggested move
             ''' TEACHER '''
@@ -705,19 +663,27 @@ def get_four_game_average_score(teacher_agent):#if __name__ == "__main__":
 
             dqn_move = possible_actions[dqn_move_index]
             # flip move
-            new_dqn_move = flip_move(dqn_move)
+            firstPos = dqn_move[0]
+            firstPosRow = int(str(firstPos)[0])
+            firstPosCol = int(str(firstPos)[1])
+            secondPos = dqn_move[1]
+            secondPosRow = int(str(secondPos)[0])
+            secondPosCol = int(str(secondPos)[1])
+            newFirstPosRow = 11 - firstPosRow
+            newFirstPosCol = 9 - firstPosCol
+            newSecondPosRow = 11 - secondPosRow
+            newSecondPosCol = 9 -secondPosCol
+            new_dqn_move = (int(str(newFirstPosRow) + str(newFirstPosCol)), int(str(newSecondPosRow)+str(newSecondPosCol)))
             pos = pos.move(dqn_move, True) ## used to be new_dqn_move
             # update stockfish based on DQN action
-            dqn_move_stockfish = game.render(119-new_dqn_move[0]) + game.render(119-new_dqn_move[1]) ## used to be new dqn_move
+            dqn_move_stockfish = game.render(119-new_dqn_move[0]) + game.render(119-new_dqn_move[1]) ## used to be dqn_move
             if king_is_in_check:
                 print("Chose to move " + dqn_move_stockfish + "to escape")
             moves_list.append(dqn_move_stockfish)
             #print("dqn move stockfish: ", str(dqn_move_stockfish))
             #print(moves_list)
             deep.setposition(moves_list)
-            game.print_pos(pos)
-            print(moves_list)
-            assert percy_liang(moves_list, pos)
+
 
             # compute score of board after student agent makes action
             after_output = deep.bestmove()
@@ -736,10 +702,7 @@ def get_four_game_average_score(teacher_agent):#if __name__ == "__main__":
                 score_after_model_move = (-1)*int(after_output['info'].split(" ")[9]) # changed from 9
 
             # Q-Learning
-            pos = pos.rotate()
-            # game.print_pos(pos)
-            # print(moves_list)
-            # assert percy_liang(moves_list, pos)
+            pos.rotate()
             new_state = toBit(pos.getNewState(dqn_move))
             #print ("reward: ", score_after_model_move, " - ", score_before_model_move)
             reward = score_after_model_move - score_before_model_move #abs(score_after_model_move - score_before_model_move)*(score_after_model_move - score_before_model_move)
@@ -752,13 +715,13 @@ def get_four_game_average_score(teacher_agent):#if __name__ == "__main__":
                 game.print_pos(pos.rotate())#pos.rotate()#game.print_pos()
             else:
                 pos.rotate()
-            #assert percy_liang(moves_list, pos)
-            #assert percy_liang(moves_list, pos)
+
+
             ''' Teacher Q-learning '''
             if teacher_action_index != 2:
-                score_student = get_move_value(dqn_move_index, moves_list, possible_actions, pos.rotate()) # used to be pos
+                score_student = get_move_value(dqn_move_index, moves_list, possible_actions)
                 optimal_move_index = possible_actions.index((convert_to_nums(after_output['move'][0:2]),convert_to_nums(after_output['move'][2:])))
-                score_optimal = get_move_value(optimal_move_index, moves_list, possible_actions, pos.rotate())
+                score_optimal = get_move_value(optimal_move_index, moves_list, possible_actions)
                 reward = 300.0 + score_student - score_optimal #Use ETA if teacher_action_index = 1
                 if len(teacher_agent.not_yet_rewarded) > 0:
                     most_recent = teacher_agent.not_yet_rewarded[-1]
@@ -790,7 +753,6 @@ def get_four_game_average_score(teacher_agent):#if __name__ == "__main__":
             '''Begin check for check code''' # im tired!
 
             possibly_valid_moves = [m for m in pos.gen_moves(True)]
-            assert percy_liang(moves_list, pos.rotate())
             #print(possibly_valid_moves)
             possibly_valid_move_indices = [possible_actions.index(gm) for gm in possibly_valid_moves]
             valid_move_indices = []
@@ -800,7 +762,6 @@ def get_four_game_average_score(teacher_agent):#if __name__ == "__main__":
                 #print(newPos.board)
                 if not inCheck(newPos, True):
                     valid_move_indices.append(index)
-            assert percy_liang(moves_list, pos.rotate())
             if len(valid_move_indices) == 0:
                 if inCheck(pos, True):
                     print("Hahaha! We won.")
@@ -809,7 +770,8 @@ def get_four_game_average_score(teacher_agent):#if __name__ == "__main__":
                 print("episode: {}/{}, number of rounds: {}, score: {}, e: {:.2}"
                       .format(e, EPISODES, round, final_score / float(round), student_agent.epsilon))
                 scores_list.append(final_score / float(round))
-                print (scores_list)
+                if print_game:
+                    print (scores_list)
                 done = True
                 # if e % 10 == 0:
                 #     score_list.append(final_score)
@@ -828,18 +790,11 @@ def get_four_game_average_score(teacher_agent):#if __name__ == "__main__":
 
             # Opponent takes an action
             opponent_move, score = searcher.search(pos, secs=2)
-            opponent_move_flipped = flip_move(opponent_move)
             opponent_move_stockfish = game.render(119-opponent_move[0]) + game.render(119-opponent_move[1])
-            assert percy_liang(moves_list, pos.rotate())
             pos = pos.move(opponent_move, False)
             # update stockfish based on opponent action
             moves_list.append(opponent_move_stockfish)
-            print("possibly buggy move", opponent_move_stockfish)
-            assert percy_liang(moves_list, pos.rotate())
             deep.setposition(moves_list)
-
-            ## addded:
-            pos = pos.rotate()
 
             # take care of replay
             if len(student_agent.memory) > student_agent.batch_size:
@@ -847,8 +802,12 @@ def get_four_game_average_score(teacher_agent):#if __name__ == "__main__":
 
             # if len(teacher_agent.memory) > batch_size:
             #     teacher_agent.replay(batch_size)
+        if e % 25 == 0:
+            filename = 'save/with_teacher_' + str(e) + '.h5'
+            print("saving" + filename)
+            student_agent.save(filename)
 
-    return sum(scores_list) / (EPISODES + 0.0)
+    #return sum(scores_list) / (EPISODES + 0.0)
     # plt.plot(scores_list)
     # plt.ylabel('average score value')
     # plt.xlabel('games')
@@ -856,9 +815,6 @@ def get_four_game_average_score(teacher_agent):#if __name__ == "__main__":
     #student_json_string = student_agent.to_json()
     #student_agent.save_weights(filepath)
     #model = model_from_json(json_string)
-    # if (e + 1) % 25 == 0:
-    #     filename = 'save/without_teacher_' + e + '.h5'
-    #     student_agent.save(filename)
 
         #     ########## OLD CODE ###########
         # # if e % 10 == 0:
@@ -872,70 +828,65 @@ def get_four_game_average_score(teacher_agent):#if __name__ == "__main__":
 #MAKE assign_params pretty much completed (just need to make batch size a class var)
 #MAKE get_four_game_average_score Not done: involves calling the original main function for 4 iterations
 #parameter order: learning_rate, batch_size, gamma
-if __name__ == "__main__":
-    teacher_agent = TeacherAgent()
-    #plot_model(teacher_agent, to_file='model.png')
-    #student_agent = StudentAgent()
-    pos = game.Position(initial, 0, (True,True), (True,True), 0, 0)
-    searcher = game.Searcher()
-    deep = Engine(depth=20)
-    def assign_params(params):
-        teacher_agent.learning_rate = params[0]
-        teacher_agent.batch_size = 2 ** int(params[1]) #Need to add batch size to studentAgent class
-        teacher_agent.gamma = params[2]
-
-
-    i_love_go_main_muse = True
-    ranges = [0.004, 5, 0.2] #Use this so that we can choose powers of two as batch sizes
-    mins = [0.001, 1, 0.8]
-    maxes = [0.005, 6, 1.0]
-    def init_params():
-        init_parameters = []
-        for i in range(3): #3 = num parameters, lr, bs, gamma
-            init_parameters.append(random.random() * ranges[i] + mins[i])
-        init_parameters[1] = random.randint(1, 6) # Set batch size discretely
-        return init_parameters
-    params = init_params()
-    best_average_score = -2000
-    num_tries = 0
-    while best_average_score < -200 and num_tries < 50:
-        print("parameters:")
-        print(params)
-        num_tries += 1
-        for i in range(len(params)):
-            print("Exploring parameter ", str(i), "with value ", str(params[i]))
-            increase_score = -2000
-            if i == 1:
-                higher_val = params[i] + 1
-            else:
-                higher_val = params[i] + 0.05 * ranges[i]
-            if higher_val <= maxes[i]:
-                print("Increasing from " + str(params[i]) + " to " + str(higher_val))
-                params[i] = higher_val
-                assign_params(params)
-                increase_score = get_four_game_average_score(teacher_agent)
-                params[i] -= 0.05 * ranges[i]
-            decrease_score = -2000
-            if i == 1:
-                lower_val = params[i] - 1
-            else:
-                lower_val = params[i] - 0.05 * ranges[i]
-            if lower_val >= mins[i]:
-                print("Decreasing from " + str(params[i]) + " to " + str(lower_val))
-                params[i] = lower_val
-                assign_params(params)
-                decrease_score = get_four_game_average_score(teacher_agent)
-                params[i] += 0.05 * ranges[i]
-            print("Old best score: ", str(best_average_score))
-            print("Increase score: ", str(increase_score))
-            print("Decrease score: ", str(decrease_score))
-            if max(increase_score, decrease_score) > best_average_score:
-                if increase_score > decrease_score:
-                    best_average_score = increase_score
-                    params[i] += 0.05 * ranges[i]
-                else:
-                    best_average_score = decrease_score
-                    params[i] -= 0.05 * ranges[i]
+# if __name__ == "__main__":
+#     student_agent = StudentAgent()
+#     def assign_params(params):
+#         student_agent.learning_rate = params[0]
+#         student_agent.batch_size = 2 ** int(params[1]) #Need to add batch size to studentAgent class
+#         student_agent.gamma = params[2]
+#
+#
+#     i_love_go_main_muse = True
+#     ranges = [0.004, 5, 0.2] #Use this so that we can choose powers of two as batch sizes
+#     mins = [0.001, 1, 0.8]
+#     maxes = [0.005, 6, 1.0]
+#     def init_params():
+#         init_parameters = []
+#         for i in range(3): #3 = num parameters, lr, bs, gamma
+#             init_parameters.append(random.random() * ranges[i] + mins[i])
+#         init_parameters[1] = random.randint(1, 6) # Set batch size discretely
+#         return init_parameters
+#     params = init_params()
+#     best_average_score = -2000
+#     num_tries = 0
+#     while best_average_score < -200 and num_tries < 50:
+#         print("parameters:")
+#         print(params)
+#         num_tries += 1
+#         for i in range(len(params)):
+#             print("Exploring parameter ", str(i), "with value ", str(params[i]))
+#             increase_score = -2000
+#             if i == 1:
+#                 higher_val = params[i] + 1
+#             else:
+#                 higher_val = params[i] + 0.05 * ranges[i]
+#             if higher_val <= maxes[i]:
+#                 print("Increasing from " + str(params[i]) + " to " + str(higher_val))
+#                 params[i] = higher_val
+#                 assign_params(params)
+#                 increase_score = get_four_game_average_score(student_agent)
+#                 params[i] -= 0.05 * ranges[i]
+#             decrease_score = -2000
+#             if i == 1:
+#                 lower_val = params[i] - 1
+#             else:
+#                 lower_val = params[i] - 0.05 * ranges[i]
+#             if lower_val >= mins[i]:
+#                 print("Decreasing from " + str(params[i]) + " to " + str(lower_val))
+#                 params[i] = lower_val
+#                 assign_params(params)
+#                 decrease_score = get_four_game_average_score(student_agent)
+#                 params[i] += 0.05 * ranges[i]
+#             print("Old best score: ", str(best_average_score))
+#             print("Increase score: ", str(increase_score))
+#             print("Decrease score: ", str(decrease_score))
+#             if max(increase_score, decrease_score) > best_average_score:
+#                 if increase_score > decrease_score:
+#                     best_average_score = increase_score
+#                     params[i] += 0.05 * ranges[i]
+#                 else:
+#                     best_average_score = decrease_score
+#                     params[i] -= 0.05 * ranges[i]
 
 
 # student_agent = StudentAgent()
