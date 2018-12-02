@@ -339,14 +339,14 @@ def getTeacherState(suggested_move_index, valid_move_indices, possible_actions, 
     optimal_piece_move_indices = []
     #piece_to_move_loc = best_move[0:2]# in the form of
     reformatted_loc = best_move[0]# e2 --> 85
-    print ("whether best move is in valid move indices", best_move_index in valid_move_indices)
+    #print ("whether best move is in valid move indices", best_move_index in valid_move_indices)
     for move_index in valid_move_indices:
         if possible_actions[move_index][0] == reformatted_loc:
             optimal_piece_move_indices.append(move_index)
     if len(optimal_piece_move_indices) == 0:
         print ("length of optimal piece move indices: ", 0)
         print (valid_move_indices)
-    print (optimal_piece_move_indices)
+    #print (optimal_piece_move_indices)
     optimal_piece_move_values = []
     for optimal_piece_move_index in optimal_piece_move_indices:
         optimal_piece_move_values.append(get_move_value(optimal_piece_move_index, moves_list, possible_actions))
@@ -517,8 +517,8 @@ if __name__ == "__main__": #def get_four_game_average_score(student_agent):
     student_action_size = 1856
     teacher_agent = TeacherAgent()
     student_agent = StudentAgent()
-    #filename = 'save/without_teacher_' + str(i) + '.h5'
-    #student_agent.load(filename)
+    filename = 'save/teacher.h5'
+    teacher_agent.load(filename)
 
     batch_size = 8  # changed from 32
 
@@ -580,8 +580,8 @@ if __name__ == "__main__": #def get_four_game_average_score(student_agent):
             possibly_valid_move_indices = [possible_actions.index(gm) for gm in possibly_valid_moves]
             meg_is_so_so_so_so_special = True
             king_is_in_check = inCheck(pos, True) #ADDED
-            if king_is_in_check:
-                print("********CHECK**********")
+            # if king_is_in_check:
+            #     print("********CHECK**********")
             '''Begin check for check code'''
             valid_move_indices = []
             for index in possibly_valid_move_indices:
@@ -628,7 +628,8 @@ if __name__ == "__main__": #def get_four_game_average_score(student_agent):
             # get teacher state given the student's suggested move index and the state of the game
             copy_moves_list = moves_list[:]
             teacher_state, optimal_piece_move_indices_maybe, best_move_index, had_a_nan = getTeacherState(dqn_move_index, valid_move_indices, possible_actions, copy_moves_list)
-            print('teacher state: ', teacher_state)
+            if print_game:
+                print('teacher state: ', teacher_state)
             # if had_a_nan:
             #     print("Should print board")
             #     game.print_pos(pos)
@@ -636,25 +637,31 @@ if __name__ == "__main__": #def get_four_game_average_score(student_agent):
 
             # get teacher action
             teacher_action_index = teacher_agent.act(teacher_state) ## add this to teacher agent class
+            if len(optimal_piece_move_indices_maybe) == 0:
+                teacher_action_index = 0
+                print('error avoided')
             if teacher_action_index == 1:
                 move_index_based_on_partial = student_agent.act(state, optimal_piece_move_indices_maybe)
                 while move_index_based_on_partial not in optimal_piece_move_indices_maybe:
                      move_index_based_on_partial = random.choice(optimal_piece_move_indices_maybe)
                 dqn_move_index = move_index_based_on_partial
-                print("Partial mint, chocolate chip mint")
+                if print_game:
+                    print("Partial mint, chocolate chip mint")
                 optimal_piece_moves = []
                 for i in optimal_piece_move_indices_maybe:
                     optimal_piece_moves.append(possible_actions[i])
-                print("optimal piece moves: ", optimal_piece_moves)
+                if print_game:
+                    print("optimal piece moves: ", optimal_piece_moves)
                 # partial hint was given, check which hint that was
                 #If there's a BUGG: did we accidentally over-rotate board here?
             elif teacher_action_index == 2:
-                print("Hole hint")
-                print("Full hint: ", possible_actions[best_move_index])
+                if print_game:
+                    print("Full hint: ", possible_actions[best_move_index])
                 dqn_move_index = best_move_index
                 # full hint was given, proceed with that move
             else:
-                print("Not a bit of a hint (no hint)")
+                if print_game:
+                    print("Not a bit of a hint (no hint)")
                 assert teacher_action_index == 0
                 # no hint was given, proceed with student's suggested move
             ''' TEACHER '''
@@ -677,8 +684,8 @@ if __name__ == "__main__": #def get_four_game_average_score(student_agent):
             pos = pos.move(dqn_move, True) ## used to be new_dqn_move
             # update stockfish based on DQN action
             dqn_move_stockfish = game.render(119-new_dqn_move[0]) + game.render(119-new_dqn_move[1]) ## used to be dqn_move
-            if king_is_in_check:
-                print("Chose to move " + dqn_move_stockfish + "to escape")
+            # if king_is_in_check:
+            #     print("Chose to move " + dqn_move_stockfish + "to escape")
             moves_list.append(dqn_move_stockfish)
             #print("dqn move stockfish: ", str(dqn_move_stockfish))
             #print(moves_list)
@@ -697,7 +704,7 @@ if __name__ == "__main__": #def get_four_game_average_score(student_agent):
                     check_mated_yet = True
                 else:
                     score_after_model_move = 0
-                print("mate is in after_output_list so score is ", str(score_after_model_move))
+                #print("mate is in after_output_list so score is ", str(score_after_model_move))
             else:
                 score_after_model_move = (-1)*int(after_output['info'].split(" ")[9]) # changed from 9
 
@@ -718,26 +725,26 @@ if __name__ == "__main__": #def get_four_game_average_score(student_agent):
 
 
             ''' Teacher Q-learning '''
-            if teacher_action_index != 2:
-                score_student = get_move_value(dqn_move_index, moves_list, possible_actions)
-                optimal_move_index = possible_actions.index((convert_to_nums(after_output['move'][0:2]),convert_to_nums(after_output['move'][2:])))
-                score_optimal = get_move_value(optimal_move_index, moves_list, possible_actions)
-                reward = 300.0 + score_student - score_optimal #Use ETA if teacher_action_index = 1
-                if len(teacher_agent.not_yet_rewarded) > 0:
-                    most_recent = teacher_agent.not_yet_rewarded[-1]
-                    if len(most_recent) == 3:
-                        teacher_agent.remember(most_recent[0], most_recent[1], reward, teacher_state, most_recent[2])
-                    else:
-                        assert len(most_recent) == 4
-                        teacher_agent.remember(most_recent[0], most_recent[1], most_recent[3], teacher_state, most_recent[2])
-                    #Puts new state as last entry in the not yet remembered iteration list
-                for not_yet_remembered_iteration in teacher_agent.not_yet_rewarded:
-                    teacher_agent.remember(not_yet_remembered_iteration[0], not_yet_remembered_iteration[1], reward, teacher_state, not_yet_remembered_iteration[2])
-                # teacher_agent.remember(teacher_state, teacher_action_index, reward, new_teacher_state, done)
-                teacher_agent.not_yet_remembered = [[teacher_state, teacher_action_index, done, reward]]
-            else:
-                not_yet_remembered_list = [teacher_state, teacher_action_index, done]
-                teacher_agent.not_yet_rewarded.append(not_yet_remembered_list)
+            # if teacher_action_index != 2:
+            #     score_student = get_move_value(dqn_move_index, moves_list, possible_actions)
+            #     optimal_move_index = possible_actions.index((convert_to_nums(after_output['move'][0:2]),convert_to_nums(after_output['move'][2:])))
+            #     score_optimal = get_move_value(optimal_move_index, moves_list, possible_actions)
+            #     reward = 300.0 + score_student - score_optimal #Use ETA if teacher_action_index = 1
+            #     if len(teacher_agent.not_yet_rewarded) > 0:
+            #         most_recent = teacher_agent.not_yet_rewarded[-1]
+            #         if len(most_recent) == 3:
+            #             teacher_agent.remember(most_recent[0], most_recent[1], reward, teacher_state, most_recent[2])
+            #         else:
+            #             assert len(most_recent) == 4
+            #             teacher_agent.remember(most_recent[0], most_recent[1], most_recent[3], teacher_state, most_recent[2])
+            #         #Puts new state as last entry in the not yet remembered iteration list
+            #     for not_yet_remembered_iteration in teacher_agent.not_yet_rewarded:
+            #         teacher_agent.remember(not_yet_remembered_iteration[0], not_yet_remembered_iteration[1], reward, teacher_state, not_yet_remembered_iteration[2])
+            #     # teacher_agent.remember(teacher_state, teacher_action_index, reward, new_teacher_state, done)
+            #     teacher_agent.not_yet_remembered = [[teacher_state, teacher_action_index, done, reward]]
+            # else:
+            #     not_yet_remembered_list = [teacher_state, teacher_action_index, done]
+            #     teacher_agent.not_yet_rewarded.append(not_yet_remembered_list)
             ''' Teacher Q-learning '''
 
 
