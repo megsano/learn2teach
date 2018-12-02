@@ -513,7 +513,7 @@ def inCheck(position, checkCurrentPlayer):
 
 if __name__ == "__main__": #def get_four_game_average_score(student_agent):
     # Constants for training
-    EPISODES = 125
+    EPISODES = 126
     student_action_size = 1856
 
     # Initialize agents
@@ -799,6 +799,10 @@ if __name__ == "__main__": #def get_four_game_average_score(student_agent):
 
             # if len(teacher_agent.memory) > batch_size:
             #     teacher_agent.replay(batch_size)
+        if e % 25 == 0:
+            filename = 'save/without_teacher_' + str(e) + '.h5'
+            print("saving" + filename)
+            student_agent.save(filename)
 
     #return sum(scores_list) / (EPISODES + 0.0)
     # plt.plot(scores_list)
@@ -808,9 +812,6 @@ if __name__ == "__main__": #def get_four_game_average_score(student_agent):
     #student_json_string = student_agent.to_json()
     #student_agent.save_weights(filepath)
     #model = model_from_json(json_string)
-    if (e + 1) % 25 == 0:
-        filename = 'save/without_teacher_' + e + '.h5'
-        student_agent.save(filename)
 
         #     ########## OLD CODE ###########
         # # if e % 10 == 0:

@@ -10,6 +10,7 @@ from keras.layers import Dense
 from keras.optimizers import Adam
 from keras.models import model_from_json
 from keras.models import load_model
+from keras.utils import plot_model
 import h5py
 
 # from keras import models
@@ -287,7 +288,7 @@ Input: move index
 Output: value of the move
 '''
 
-def get_move_value(move_index, moves_list, possible_actions):
+def get_move_value(move_index, moves_list, possible_actions, deep):
     before_output = deep.bestmove() # computing score of board before student agent makes action
     before_output_list = before_output['info'].split(" ")
     score_before_that_move = (-1)*int(before_output_list[9]) # changed from 9
@@ -316,7 +317,7 @@ def convert_to_nums(algebra_str):
 '''
 Get teacher state
 '''
-def getTeacherState(suggested_move_index, valid_move_indices, possible_actions, moves_list): #UPDATE PARAMS IN MAIN!!!
+def getTeacherState(suggested_move_index, valid_move_indices, possible_actions, moves_list, deep): #UPDATE PARAMS IN MAIN!!!
     had_a_nan_in_teacher_state = False
     state = []
     # state 1: difference between suggested move value and optimal move value
@@ -324,14 +325,14 @@ def getTeacherState(suggested_move_index, valid_move_indices, possible_actions, 
     #print("optimal move now: ", output['move'])
     best_move = (convert_to_nums(output['move'][0:2]),convert_to_nums(output['move'][2:]))
     best_move_index = possible_actions.index(best_move)
-    suggested_move_value = get_move_value(suggested_move_index, moves_list, possible_actions)
-    optimal_move_value = get_move_value(best_move_index, moves_list, possible_actions)
+    suggested_move_value = get_move_value(suggested_move_index, moves_list, possible_actions, deep)
+    optimal_move_value = get_move_value(best_move_index, moves_list, possible_actions, deep)
     diff = suggested_move_value - optimal_move_value
     state.append(diff)
     # state 2: optimal move
     valid_moves_values = []# get value of move for move in possibly_valid_move_indices
     for valid_move_index in valid_move_indices:
-        valid_moves_values.append(get_move_value(valid_move_index, moves_list, possible_actions))
+        valid_moves_values.append(get_move_value(valid_move_index, moves_list, possible_actions, deep))
     state.append(np.std(np.array(valid_moves_values)))
     # state 3: boolean comparing suggested and optimal
     state.append(best_move_index == suggested_move_index)
@@ -349,7 +350,7 @@ def getTeacherState(suggested_move_index, valid_move_indices, possible_actions, 
     print (optimal_piece_move_indices)
     optimal_piece_move_values = []
     for optimal_piece_move_index in optimal_piece_move_indices:
-        optimal_piece_move_values.append(get_move_value(optimal_piece_move_index, moves_list, possible_actions))
+        optimal_piece_move_values.append(get_move_value(optimal_piece_move_index, moves_list, possible_actions, deep))
     if len(optimal_piece_move_values) == 0:
         had_a_nan_in_teacher_state = True
     state.append(np.std(np.array(optimal_piece_move_values)))
@@ -511,14 +512,14 @@ def inCheck(position, checkCurrentPlayer):
 ###############################################################################
 ##### TRAINING STUDENT WITOUT TEACHER NOW STARTING 11:25am #####
 
-if __name__ == "__main__": #def get_four_game_average_score(student_agent):
+def get_four_game_average_score(teacher_agent):#if __name__ == "__main__":
     # Constants for training
     EPISODES = 125
     student_action_size = 1856
 
     # Initialize agents
     student_agent = StudentAgent()
-    teacher_agent = TeacherAgent()
+    #teacher_agent = TeacherAgent()
     batch_size = 8  # changed from 32
 
     # Creating a list of all possible actions of student agent on the chessboard
@@ -625,7 +626,7 @@ if __name__ == "__main__": #def get_four_game_average_score(student_agent):
             ''' TEACHER '''
             # get teacher state given the student's suggested move index and the state of the game
             copy_moves_list = moves_list[:]
-            teacher_state, optimal_piece_move_indices_maybe, best_move_index, had_a_nan = getTeacherState(dqn_move_index, valid_move_indices, possible_actions, copy_moves_list)
+            teacher_state, optimal_piece_move_indices_maybe, best_move_index, had_a_nan = getTeacherState(dqn_move_index, valid_move_indices, possible_actions, copy_moves_list, deep)
             print('teacher state: ', teacher_state)
             # if had_a_nan:
             #     print("Should print board")
@@ -717,9 +718,9 @@ if __name__ == "__main__": #def get_four_game_average_score(student_agent):
 
             ''' Teacher Q-learning '''
             if teacher_action_index != 2:
-                score_student = get_move_value(dqn_move_index, moves_list, possible_actions)
+                score_student = get_move_value(dqn_move_index, moves_list, possible_actions, deep)
                 optimal_move_index = possible_actions.index((convert_to_nums(after_output['move'][0:2]),convert_to_nums(after_output['move'][2:])))
-                score_optimal = get_move_value(optimal_move_index, moves_list, possible_actions)
+                score_optimal = get_move_value(optimal_move_index, moves_list, possible_actions, deep)
                 reward = 300.0 + score_student - score_optimal #Use ETA if teacher_action_index = 1
                 if len(teacher_agent.not_yet_rewarded) > 0:
                     most_recent = teacher_agent.not_yet_rewarded[-1]
@@ -826,64 +827,65 @@ if __name__ == "__main__": #def get_four_game_average_score(student_agent):
 #parameter order: learning_rate, batch_size, gamma
 if __name__ == "__main__":
     teacher_agent = TeacherAgent()
-    student_agent = StudentAgent()
-    def assign_params(params):
-        teacher_agent.learning_rate = params[0]
-        teacher_agent.batch_size = 2 ** int(params[1]) #Need to add batch size to studentAgent class
-        teacher_agent.gamma = params[2]
-
-
-    i_love_go_main_muse = True
-    ranges = [0.004, 5, 0.2] #Use this so that we can choose powers of two as batch sizes
-    mins = [0.001, 1, 0.8]
-    maxes = [0.005, 6, 1.0]
-    def init_params():
-        init_parameters = []
-        for i in range(3): #3 = num parameters, lr, bs, gamma
-            init_parameters.append(random.random() * ranges[i] + mins[i])
-        init_parameters[1] = random.randint(1, 6) # Set batch size discretely
-        return init_parameters
-    params = init_params()
-    best_average_score = -2000
-    num_tries = 0
-    while best_average_score < -200 and num_tries < 50:
-        print("parameters:")
-        print(params)
-        num_tries += 1
-        for i in range(len(params)):
-            print("Exploring parameter ", str(i), "with value ", str(params[i]))
-            increase_score = -2000
-            if i == 1:
-                higher_val = params[i] + 1
-            else:
-                higher_val = params[i] + 0.05 * ranges[i]
-            if higher_val <= maxes[i]:
-                print("Increasing from " + str(params[i]) + " to " + str(higher_val))
-                params[i] = higher_val
-                assign_params(params)
-                increase_score = get_four_game_average_score(student_agent)
-                params[i] -= 0.05 * ranges[i]
-            decrease_score = -2000
-            if i == 1:
-                lower_val = params[i] - 1
-            else:
-                lower_val = params[i] - 0.05 * ranges[i]
-            if lower_val >= mins[i]:
-                print("Decreasing from " + str(params[i]) + " to " + str(lower_val))
-                params[i] = lower_val
-                assign_params(params)
-                decrease_score = get_four_game_average_score(student_agent)
-                params[i] += 0.05 * ranges[i]
-            print("Old best score: ", str(best_average_score))
-            print("Increase score: ", str(increase_score))
-            print("Decrease score: ", str(decrease_score))
-            if max(increase_score, decrease_score) > best_average_score:
-                if increase_score > decrease_score:
-                    best_average_score = increase_score
-                    params[i] += 0.05 * ranges[i]
-                else:
-                    best_average_score = decrease_score
-                    params[i] -= 0.05 * ranges[i]
+    plot_model(teacher_agent, to_file='model.png')
+    # #student_agent = StudentAgent()
+    # def assign_params(params):
+    #     teacher_agent.learning_rate = params[0]
+    #     teacher_agent.batch_size = 2 ** int(params[1]) #Need to add batch size to studentAgent class
+    #     teacher_agent.gamma = params[2]
+    #
+    #
+    # i_love_go_main_muse = True
+    # ranges = [0.004, 5, 0.2] #Use this so that we can choose powers of two as batch sizes
+    # mins = [0.001, 1, 0.8]
+    # maxes = [0.005, 6, 1.0]
+    # def init_params():
+    #     init_parameters = []
+    #     for i in range(3): #3 = num parameters, lr, bs, gamma
+    #         init_parameters.append(random.random() * ranges[i] + mins[i])
+    #     init_parameters[1] = random.randint(1, 6) # Set batch size discretely
+    #     return init_parameters
+    # params = init_params()
+    # best_average_score = -2000
+    # num_tries = 0
+    # while best_average_score < -200 and num_tries < 50:
+    #     print("parameters:")
+    #     print(params)
+    #     num_tries += 1
+    #     for i in range(len(params)):
+    #         print("Exploring parameter ", str(i), "with value ", str(params[i]))
+    #         increase_score = -2000
+    #         if i == 1:
+    #             higher_val = params[i] + 1
+    #         else:
+    #             higher_val = params[i] + 0.05 * ranges[i]
+    #         if higher_val <= maxes[i]:
+    #             print("Increasing from " + str(params[i]) + " to " + str(higher_val))
+    #             params[i] = higher_val
+    #             assign_params(params)
+    #             increase_score = get_four_game_average_score(teacher_agent)
+    #             params[i] -= 0.05 * ranges[i]
+    #         decrease_score = -2000
+    #         if i == 1:
+    #             lower_val = params[i] - 1
+    #         else:
+    #             lower_val = params[i] - 0.05 * ranges[i]
+    #         if lower_val >= mins[i]:
+    #             print("Decreasing from " + str(params[i]) + " to " + str(lower_val))
+    #             params[i] = lower_val
+    #             assign_params(params)
+    #             decrease_score = get_four_game_average_score(teacher_agent)
+    #             params[i] += 0.05 * ranges[i]
+    #         print("Old best score: ", str(best_average_score))
+    #         print("Increase score: ", str(increase_score))
+    #         print("Decrease score: ", str(decrease_score))
+    #         if max(increase_score, decrease_score) > best_average_score:
+    #             if increase_score > decrease_score:
+    #                 best_average_score = increase_score
+    #                 params[i] += 0.05 * ranges[i]
+    #             else:
+    #                 best_average_score = decrease_score
+    #                 params[i] -= 0.05 * ranges[i]
 
 
 # student_agent = StudentAgent()
