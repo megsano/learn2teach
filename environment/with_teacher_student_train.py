@@ -11,16 +11,16 @@ from keras.optimizers import Adam
 from keras.models import model_from_json
 from keras.models import load_model
 import h5py
-
-# from keras import models
-# from keras import layers
-# from keras.wrappers.scikit_learn import KerasClassifier
-# from sklearn.model_selection import GridSearchCV
-# from sklearn.datasets import make_classification
+import time
 import game
 from pystockfish import *
 # random.seed(3)
 # np.random.seed(3)
+
+'''
+Modes
+- student.py
+'''
 
 
 ########### TEACHING AGENT #############################
@@ -31,7 +31,7 @@ class TeacherAgent:
         self.action_size = action_size
         self.memory = deque(maxlen=2000)
         self.gamma = 0.95    # discount rate
-        self.epsilon = 1.0  # exploration rate
+        self.epsilon = 0.0  # exploration rate
         self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
         self.learning_rate = 0.001
@@ -310,9 +310,13 @@ def convert_to_nums(algebra_str):
     letter = algebra_str[0]
     number = algebra_str[1]
     letter_as_num = ord(letter) - ord("a") + 1
-    new_number = 10 - int(number)
+    try:
+        new_number = 10 - int(number)
+        return 10 * new_number + letter_as_num
+    except:
+        return None
     #print("converted: ", 10 * new_number + letter_as_num)
-    return 10 * new_number + letter_as_num
+
 '''
 Get teacher state
 '''
@@ -323,7 +327,11 @@ def getTeacherState(suggested_move_index, valid_move_indices, possible_actions, 
     output = deep.bestmove() ## something else
     #print("optimal move now: ", output['move'])
     best_move = (convert_to_nums(output['move'][0:2]),convert_to_nums(output['move'][2:]))
-    best_move_index = possible_actions.index(best_move)
+    if best_move[0] == None or best_move[1] == None:
+        best_move_index = random.choice(valid_move_indices)
+        best_move = possible_actions[best_move_index]
+    else:
+        best_move_index = possible_actions.index(best_move)
     suggested_move_value = get_move_value(suggested_move_index, moves_list, possible_actions)
     optimal_move_value = get_move_value(best_move_index, moves_list, possible_actions)
     diff = suggested_move_value - optimal_move_value
@@ -519,6 +527,7 @@ if __name__ == "__main__": #def get_four_game_average_score(student_agent):
     student_agent = StudentAgent()
     filename = 'save/teacher.h5'
     teacher_agent.load(filename)
+    student_agent.load('save/with_teacher_54.h5')
 
     batch_size = 8  # changed from 32
 
@@ -542,10 +551,11 @@ if __name__ == "__main__": #def get_four_game_average_score(student_agent):
     # TEACHER ACTION LIST
     #['no_hint', 'partial_hint', 'full_hint']
 
-    scores_list = []
-
+    scores_list = [-1021.3333333333334, -1791.9, -1871.6315789473683, -1772.2608695652175, -1814.2068965517242, -1069.15625, -1091.4285714285713, -1031.5652173913043, -350.0, -172.23529411764707, -1067.0833333333333, -1477.5555555555557, -399.85, -2676.0, -79.36363636363636,  -632.5, -279.2631578947368, -242.58333333333334, -2010.5384615384614, -1200.25, -1786.5555555555557, -2465.785714285714, -2244.0714285714284, -1487.8333333333333, -1696.65, -384.25, -518.1818181818181, -1528.0, -201.91666666666666, -2351.6875, -1420.5454545454545, -1774.3809523809523, -1799.357142857143, -1079.111111111111, -1810.3076923076924, -1250.1666666666667, -2425.6666666666665, -1450.391304347826, -96.92307692307692, -1701.6666666666667, -1066.625,  -1057.7692307692307, -447.875, -392.8421052631579, -1448.1052631578948, -2247.4583333333335, -3155.4210526315787, -1756.0526315789473, -829.7333333333333, -1984.1666666666667, -1653.8846153846155, -173.0, -1285.6923076923076,  -628.695652173913, -764.5]
+## CHANGE SCORES LIST
     # Training EPISODES times
-    for e in range(EPISODES):
+    for e in range(55, EPISODES): ## START AT 13
+        start_time = time.time()
         print_game = (e + 1) % 25 == 0
         check_mated_yet = False
         print ("episode: ", e)
@@ -564,6 +574,22 @@ if __name__ == "__main__": #def get_four_game_average_score(student_agent):
             before_output = deep.bestmove() # computing score of board before student agent makes action
             before_output_list = before_output['info'].split(" ")
             if 'mate' in before_output_list:
+                final_score -= 5000
+                ''' modified '''
+                if inCheck(pos, True):
+                    print("You lost, but you're getting there little one")
+                    #game.print_pos(pos) #CHANGEDD think this could be a good way to tell whether game goes exactly the same way every time
+                else:
+                    print("Huh.  Stalemate.  ")
+                end_time = time.time()
+                duration = end_time - start_time
+                print("episode: {}/{}, number of rounds: {}, score: {}, e: {:.2}, time : {}"
+                      .format(e, EPISODES, round, final_score / float(round), student_agent.epsilon, end_time))
+                scores_list.append(final_score / float(round))
+                print (scores_list)
+                done = True
+                break
+
                 mate_index = before_output_list.index('mate')
                 mate_score = before_output_list[mate_index + 1]
                 # if not check_mated_yet:
@@ -594,11 +620,12 @@ if __name__ == "__main__": #def get_four_game_average_score(student_agent):
                     #game.print_pos(pos) #CHANGEDD think this could be a good way to tell whether game goes exactly the same way every time
                 else:
                     print("Huh.  Stalemate.  ")
-                print("episode: {}/{}, number of rounds: {}, score: {}, e: {:.2}"
-                      .format(e, EPISODES, round, final_score / float(round), student_agent.epsilon))
+                end_time = time.time()
+                duration = end_time - start_time
+                print("episode: {}/{}, number of rounds: {}, score: {}, e: {:.2}, time : {}"
+                      .format(e, EPISODES, round, final_score / float(round), student_agent.epsilon, end_time))
                 scores_list.append(final_score / float(round))
-                if print_game:
-                    print (scores_list)
+                print (scores_list)
                 done = True
                 break
             # else:
@@ -697,6 +724,22 @@ if __name__ == "__main__": #def get_four_game_average_score(student_agent):
             #print ("after output info: " + after_output['info'])
             after_output_list = after_output['info'].split(" ")
             if 'mate' in after_output_list:
+                ''' modified '''
+                if inCheck(pos, True):
+                    print("You lost, but you're getting there little one")
+                    #game.print_pos(pos) #CHANGEDD think this could be a good way to tell whether game goes exactly the same way every time
+                else:
+                    print("Huh.  Stalemate.  ")
+                end_time = time.time()
+                duration = end_time - start_time
+                print("episode: {}/{}, number of rounds: {}, score: {}, e: {:.2}, time : {}"
+                      .format(e, EPISODES, round, final_score / float(round), student_agent.epsilon, end_time))
+                scores_list.append(final_score / float(round))
+                print (scores_list)
+                done = True
+                new_state = toBit(pos.getNewState(dqn_move))
+                student_agent.remember(state, dqn_move_index, -5000, new_state, done)
+                break
                 mate_index = after_output_list.index('mate')
                 mate_score = after_output_list[mate_index + 1]
                 if not check_mated_yet:
@@ -774,11 +817,12 @@ if __name__ == "__main__": #def get_four_game_average_score(student_agent):
                     print("Hahaha! We won.")
                 else:
                     print("Hahaha! Stalemate. ")
-                print("episode: {}/{}, number of rounds: {}, score: {}, e: {:.2}"
-                      .format(e, EPISODES, round, final_score / float(round), student_agent.epsilon))
+                end_time = time.time()
+                duration = end_time - start_time
+                print("episode: {}/{}, number of rounds: {}, score: {}, e: {:.2}, time : {}"
+                      .format(e, EPISODES, round, final_score / float(round), student_agent.epsilon, end_time))
                 scores_list.append(final_score / float(round))
-                if print_game:
-                    print (scores_list)
+                print (scores_list)
                 done = True
                 # if e % 10 == 0:
                 #     score_list.append(final_score)
@@ -809,10 +853,10 @@ if __name__ == "__main__": #def get_four_game_average_score(student_agent):
 
             # if len(teacher_agent.memory) > batch_size:
             #     teacher_agent.replay(batch_size)
-        if e % 25 == 0:
-            filename = 'save/with_teacher_' + str(e) + '.h5'
-            print("saving" + filename)
-            student_agent.save(filename)
+
+        filename = 'save/with_teacher_' + str(e) + '.h5'
+        print("saving" + filename)
+        student_agent.save(filename)
 
     #return sum(scores_list) / (EPISODES + 0.0)
     # plt.plot(scores_list)

@@ -31,9 +31,9 @@ class TeacherAgent:
         self.action_size = action_size
         self.memory = deque(maxlen=2000)
         self.gamma = 0.95    # discount rate
-        self.epsilon = 1.0  # exploration rate
+        self.epsilon = 0.0  # exploration rate
         self.epsilon_min = 0.01
-        self.epsilon_decay = 0.995
+        self.epsilon_decay = 0.1
         self.learning_rate = 0.001
         self.model = self._build_model()
         self.moves_since_hint = 0
@@ -213,7 +213,7 @@ class StudentAgent: #### NEWEST: [0.0042981037511488785, 3.0, 0.9213798872899134
         self.action_size = action_size
         self.memory = deque(maxlen=2000)
         self.gamma = 0.9213798872899134 #0.995 #0.8639910333096159    # discount rate
-        self.epsilon = 0.5 # exploration rate
+        self.epsilon = 0.0 # exploration rate
         self.epsilon_min = 0.36
         self.epsilon_decay = 0.999
         self.learning_rate = 0.0042981037511488785 # 0.0019518585083675654
@@ -237,11 +237,7 @@ class StudentAgent: #### NEWEST: [0.0042981037511488785, 3.0, 0.9213798872899134
         #print (len(valid_move_indices))
         if np.random.rand() <= self.epsilon:
             random_action_index = random.choice(valid_move_indices)
-            # if random_action_index in valid_move_indices:
             return random_action_index
-            # while random_action_index not in valid_move_indices:
-            #     random_action_index = random.randrange(self.action_size)
-            # return random_action_index
         act_values = self.model.predict(state)
         new_act_values = []
         for i,val in enumerate(act_values[0]):
@@ -513,13 +509,13 @@ def inCheck(position, checkCurrentPlayer):
 
 if __name__ == "__main__": #def get_four_game_average_score(student_agent):
     # Constants for training
-    EPISODES = 5
+    EPISODES = 6
     student_action_size = 1856
 
-    for i in range(126):
-        if i % 25 == 0:
+    for i in [100]:
+        if i % 100 == 0:
             student_agent = StudentAgent()
-            filename = 'save/without_teacher_' + str(i) + '.h5'
+            filename = 'save/with_teacher_' + str(i) + '.h5'
             student_agent.load(filename)
 
             # Initialize agents

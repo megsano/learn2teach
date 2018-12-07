@@ -11,6 +11,8 @@ from keras.optimizers import Adam
 from keras.models import model_from_json
 from keras.models import load_model
 import h5py
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # from keras import models
 # from keras import layers
@@ -321,11 +323,12 @@ def getTeacherState(suggested_move_index, valid_move_indices, possible_actions, 
     state = []
     # state 1: difference between suggested move value and optimal move value
     output = deep.bestmove() ## something else
-    #print("optimal move now: ", output['move'])
+    print("The optimal move is to move {} to {}".format(output['move'][0:2], output['move'][2:]))
     best_move = (convert_to_nums(output['move'][0:2]),convert_to_nums(output['move'][2:]))
     best_move_index = possible_actions.index(best_move)
     suggested_move_value = get_move_value(suggested_move_index, moves_list, possible_actions)
     optimal_move_value = get_move_value(best_move_index, moves_list, possible_actions)
+    #print("The value of student's suggested move is {} and the value of the optimal move is {}".format(suggested_move_value, optimal_move_value))
     diff = suggested_move_value - optimal_move_value
     state.append(diff)
     # state 2: optimal move
@@ -339,14 +342,14 @@ def getTeacherState(suggested_move_index, valid_move_indices, possible_actions, 
     optimal_piece_move_indices = []
     #piece_to_move_loc = best_move[0:2]# in the form of
     reformatted_loc = best_move[0]# e2 --> 85
-    print ("whether best move is in valid move indices", best_move_index in valid_move_indices)
+    #print ("whether best move is in valid move indices", best_move_index in valid_move_indices)
     for move_index in valid_move_indices:
         if possible_actions[move_index][0] == reformatted_loc:
             optimal_piece_move_indices.append(move_index)
-    if len(optimal_piece_move_indices) == 0:
-        print ("length of optimal piece move indices: ", 0)
-        print (valid_move_indices)
-    print (optimal_piece_move_indices)
+    # if len(optimal_piece_move_indices) == 0:
+    #     print ("length of optimal piece move indices: ", 0)
+    #     print (valid_move_indices)
+    # print (optimal_piece_move_indices)
     optimal_piece_move_values = []
     for optimal_piece_move_index in optimal_piece_move_indices:
         optimal_piece_move_values.append(get_move_value(optimal_piece_move_index, moves_list, possible_actions))
@@ -406,8 +409,8 @@ def getKingPos(boardString, piece_letter):
     # #print("length of board string before reducing empty spaces: ", str(len(boardString)))
     # boardString = boardString.replace(" ", "")
     #print(splitted)
-    if len(boardString) != 64:
-        print("boardString length = " + str(len(boardString)))
+    #if len(boardString) != 64:
+        #print("boardString length = " + str(len(boardString)))
     #print ("boardString: ", boardString)
     splitted = []
     for i in range(8):
@@ -542,12 +545,24 @@ if __name__ == "__main__": #def get_four_game_average_score(student_agent):
     #['no_hint', 'partial_hint', 'full_hint']
 
     scores_list = []
+    print('*************************************************************************************')
+    print('*************************************************************************************')
+    print('                                                                                     ')
+    print('                                                                                     ')
+    print('                                                                                     ')
+    print('Welcome to Learn2Teach! Below, you will see an AI teach another AI how to play chess.')
+    print('                                                                                     ')
+    print('                                                                                     ')
+    print('                                                                                     ')
+    print('*************************************************************************************')
 
     # Training EPISODES times
     for e in range(EPISODES):
-        print_game = (e + 1) % 25 == 0
+        print('*************************************************************************************')
+        # print_game = (e + 1) % 25 == 0
+        print_game = True
         check_mated_yet = False
-        print ("episode: ", e)
+        print ("Game number: ", e)
         deep = Engine(depth=20) # Initialize Stockfish
         final_score = 0 # Initialize final score for the game
         done = False
@@ -570,7 +585,7 @@ if __name__ == "__main__": #def get_four_game_average_score(student_agent):
                 #     check_mated_yet = True
                 # else:
                 score_before_model_move = 0
-                print("mate is in before_output_list so score is ", str(score_before_model_move))
+                #print("mate is in before_output_list so score is ", str(score_before_model_move))
             else:
                 score_before_model_move = (-1)*int(before_output['info'].split(" ")[9]) # changed from 9
 
@@ -579,8 +594,8 @@ if __name__ == "__main__": #def get_four_game_average_score(student_agent):
             possibly_valid_move_indices = [possible_actions.index(gm) for gm in possibly_valid_moves]
             meg_is_so_so_so_so_special = True
             king_is_in_check = inCheck(pos, True) #ADDED
-            if king_is_in_check:
-                print("********CHECK**********")
+            #if king_is_in_check:
+                #print("********CHECK**********")
             '''Begin check for check code'''
             valid_move_indices = []
             for index in possibly_valid_move_indices:
@@ -589,12 +604,14 @@ if __name__ == "__main__": #def get_four_game_average_score(student_agent):
                     valid_move_indices.append(index)
             if len(valid_move_indices) == 0:
                 if inCheck(pos, True):
-                    print("You lost, but you're getting there little one")
+                    #print("You lost, but you're getting there little one")
+                    print("Student lost")
                     #game.print_pos(pos) #CHANGEDD think this could be a good way to tell whether game goes exactly the same way every time
                 else:
-                    print("Huh.  Stalemate.  ")
-                print("episode: {}/{}, number of rounds: {}, score: {}, e: {:.2}"
-                      .format(e, EPISODES, round, final_score / float(round), student_agent.epsilon))
+                    #print("Huh.  Stalemate.  ")
+                    print("Stalemate")
+                #print("episode: {}/{}, number of rounds: {}, score: {}, e: {:.2}"
+                      #.format(e, EPISODES, round, final_score / float(round), student_agent.epsilon))
                 scores_list.append(final_score / float(round))
                 print (scores_list)
                 done = True
@@ -608,6 +625,9 @@ if __name__ == "__main__": #def get_four_game_average_score(student_agent):
             #valid_moves = [m for m in pos.gen_moves()] #### (85,65), (87, 97)
             #valid_move_indices = [possible_actions.index(gm) for gm in valid_moves]
             dqn_move_index = student_agent.act(state, valid_move_indices)
+            move = possible_actions[dqn_move_index]
+            dqn_move_stockfish = game.render(119-move[0]) + game.render(119-move[1])
+            print("Student suggested moving {} to {}".format(dqn_move_stockfish[0:2], dqn_move_stockfish[2:]))
 
             # # a check that we should be removing later
             # while dqn_move_index not in valid_move_indices:
@@ -626,7 +646,7 @@ if __name__ == "__main__": #def get_four_game_average_score(student_agent):
             # get teacher state given the student's suggested move index and the state of the game
             copy_moves_list = moves_list[:]
             teacher_state, optimal_piece_move_indices_maybe, best_move_index, had_a_nan = getTeacherState(dqn_move_index, valid_move_indices, possible_actions, copy_moves_list)
-            print('teacher state: ', teacher_state)
+            #print('teacher state: ', teacher_state)
             # if had_a_nan:
             #     print("Should print board")
             #     game.print_pos(pos)
@@ -639,20 +659,20 @@ if __name__ == "__main__": #def get_four_game_average_score(student_agent):
                 while move_index_based_on_partial not in optimal_piece_move_indices_maybe:
                      move_index_based_on_partial = random.choice(optimal_piece_move_indices_maybe)
                 dqn_move_index = move_index_based_on_partial
-                print("Partial mint, chocolate chip mint")
+                stockfish_version_partial = game.render(119-possible_actions[dqn_move_index][0])
+                print("Teacher gave partial hint") #: Move piece at {}".format(stockfish_version_partial))
                 optimal_piece_moves = []
                 for i in optimal_piece_move_indices_maybe:
                     optimal_piece_moves.append(possible_actions[i])
-                print("optimal piece moves: ", optimal_piece_moves)
+                #print("optimal piece moves: ", optimal_piece_moves)
                 # partial hint was given, check which hint that was
                 #If there's a BUGG: did we accidentally over-rotate board here?
             elif teacher_action_index == 2:
-                print("Hole hint")
-                print("Full hint: ", possible_actions[best_move_index])
+                print("Teacher gave full hint")#: Move piece at {} to {}".format(game.render(119-possible_actions[best_move_index][0]), game.render(119-possible_actions[best_move_index][1])))
                 dqn_move_index = best_move_index
                 # full hint was given, proceed with that move
             else:
-                print("Not a bit of a hint (no hint)")
+                print("Teacher did not give any hint")
                 assert teacher_action_index == 0
                 # no hint was given, proceed with student's suggested move
             ''' TEACHER '''
@@ -675,8 +695,9 @@ if __name__ == "__main__": #def get_four_game_average_score(student_agent):
             pos = pos.move(dqn_move, True) ## used to be new_dqn_move
             # update stockfish based on DQN action
             dqn_move_stockfish = game.render(119-new_dqn_move[0]) + game.render(119-new_dqn_move[1]) ## used to be dqn_move
-            if king_is_in_check:
-                print("Chose to move " + dqn_move_stockfish + "to escape")
+            print("Student chose to move {} to {}".format(dqn_move_stockfish[0:2], dqn_move_stockfish[2:]))
+            #if king_is_in_check:
+                #print("Chose to move " + dqn_move_stockfish + "to escape")
             moves_list.append(dqn_move_stockfish)
             #print("dqn move stockfish: ", str(dqn_move_stockfish))
             #print(moves_list)
@@ -695,7 +716,7 @@ if __name__ == "__main__": #def get_four_game_average_score(student_agent):
                     check_mated_yet = True
                 else:
                     score_after_model_move = 0
-                print("mate is in after_output_list so score is ", str(score_after_model_move))
+                #print("mate is in after_output_list so score is ", str(score_after_model_move))
             else:
                 score_after_model_move = (-1)*int(after_output['info'].split(" ")[9]) # changed from 9
 
@@ -762,13 +783,14 @@ if __name__ == "__main__": #def get_four_game_average_score(student_agent):
                     valid_move_indices.append(index)
             if len(valid_move_indices) == 0:
                 if inCheck(pos, True):
-                    print("Hahaha! We won.")
+                    #print("Hahaha! We won.")
+                    print("Student won")
                 else:
-                    print("Hahaha! Stalemate. ")
-                print("episode: {}/{}, number of rounds: {}, score: {}, e: {:.2}"
-                      .format(e, EPISODES, round, final_score / float(round), student_agent.epsilon))
+                    print("Stalemate")
+                #print("episode: {}/{}, number of rounds: {}, score: {}, e: {:.2}"
+                #      .format(e, EPISODES, round, final_score / float(round), student_agent.epsilon))
                 scores_list.append(final_score / float(round))
-                print (scores_list)
+                #print (scores_list)
                 done = True
                 # if e % 10 == 0:
                 #     score_list.append(final_score)
@@ -788,6 +810,7 @@ if __name__ == "__main__": #def get_four_game_average_score(student_agent):
             # Opponent takes an action
             opponent_move, score = searcher.search(pos, secs=2)
             opponent_move_stockfish = game.render(119-opponent_move[0]) + game.render(119-opponent_move[1])
+            print("The opponent moved {} to {}".format(opponent_move_stockfish[0:2], opponent_move_stockfish[2:]))
             pos = pos.move(opponent_move, False)
             # update stockfish based on opponent action
             moves_list.append(opponent_move_stockfish)
