@@ -28,9 +28,9 @@ if __name__ == "__main__":
     '''
     with_teacher = False
     episodes_per_student = 1
-    EPISODES = 100
+    EPISODES = 200
     student_action_size = 1856
-    start_student = 0
+    start_student = 125
     teacher_agent = models.TeacherAgent()
     teacher_agent.load('save/teacher.h5')
     student_agent = models.StudentAgent()
@@ -40,11 +40,11 @@ if __name__ == "__main__":
     # Creating a list of all possible actions of student agent on the chessboard
     possible_actions = util.get_possible_actions(student_action_size)
 
-    for e in range(EPISODES):
-        if e % 10 == 0: # 10 games per student
-            filename = 'save/without_teacher_' + str(int((e / 10) * 25)) + '.h5'
+    for e in range(200, 401):
+        if e % 40 == 0: # 10 games per student
+            filename = 'save/without_teacher_' + str(int((e / 40) * 25)) + '.h5'
             student_agent.load(filename)
-            print('training student: '.format(str(int((e / 10) * 25))))
+            print('training student: {}'.format(str(int((e / 40) * 25))))
         start_time = time.time()
         print_game = (e + 1) % 25 == 0
         check_mated_yet = False

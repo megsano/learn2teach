@@ -297,7 +297,33 @@ def percy_liang(move_list, old_pos):
     # print("old", old_pos)
     return new_pos.board == old_pos.board
 
-
+def get_material_difference(posi):
+    student_material = 0
+    opponent_material = 0
+    boardString_list = []
+    for row in posi.board.split("\n"):
+        if row != "" and not row.isspace():
+            boardString_list.append(row)
+    board_string = "".join(boardString_list)
+    for i in range(len(board_string)):
+        piece = board_string[i]
+        if piece == 'p':
+            opponent_material += 1
+        elif piece == 'n' or piece == 'b':
+            opponent_material += 3
+        elif piece == 'r':
+            opponent_material += 5
+        elif piece == 'q':
+            opponent_material += 9
+        elif piece == 'P':
+            student_material += 1
+        elif piece == 'N' or piece == 'B':
+            student_material+= 3
+        elif piece == 'R':
+            student_material += 5
+        elif piece == 'Q':
+            student_material += 9
+    return student_material - opponent_material
 
 
 ###############################################################################

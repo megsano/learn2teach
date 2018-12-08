@@ -24,9 +24,9 @@ class TeacherAgent:
         self.action_size = action_size
         self.memory = deque(maxlen=2000)
         self.gamma = 0.8142083663757826
-        self.epsilon = 0.0
-        self.epsilon_min = 0.01
-        self.epsilon_decay = 0.995
+        self.epsilon = 0.5
+        self.epsilon_min = 0.2
+        self.epsilon_decay = 0.99543
         self.learning_rate = 0.002698726297401723
         self.model = self._build_model()
         self.moves_since_hint = 0
@@ -96,9 +96,9 @@ class StudentAgent:
         self.action_size = action_size
         self.memory = deque(maxlen=2000)
         self.gamma = 0.9213798872899134
-        self.epsilon = 0.5
-        self.epsilon_min = 0.2
-        self.epsilon_decay = 0.999
+        self.epsilon = 0.0# 0.5
+        self.epsilon_min = 0.0#0.2
+        self.epsilon_decay = 1.0#0.999
         self.learning_rate = 0.0042981037511488785
         self.model = self._build_model()
         self.batch_size = 8

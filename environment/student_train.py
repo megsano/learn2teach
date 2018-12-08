@@ -28,9 +28,9 @@ if __name__ == "__main__":
     '''
     with_teacher = False
     episodes_per_student = 1
-    EPISODES = 126
+    EPISODES = 3
     student_action_size = 1856
-    start_episode = 125
+    start_episode = 247
     teacher_agent = models.TeacherAgent()
     student_agent = models.StudentAgent()
     teacher_agent.load('save/teacher.h5')
