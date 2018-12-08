@@ -39,11 +39,13 @@ if __name__ == "__main__":
     student_agent.load(filename)
     batch_size = 8
     scores_list = []
+    hints_list = []
 
     # Creating a list of all possible actions of student agent on the chessboard
     possible_actions = util.get_possible_actions(student_action_size)
 
     for e in range(start_episode + 1, start_episode + 1 + EPISODES):
+        hints_for_game = {0:0, 1:0, 2:0}
         start_time = time.time()
         print_game = (e + 1) % 25 == 0
         check_mated_yet = False
@@ -72,6 +74,8 @@ if __name__ == "__main__":
                       .format(e, EPISODES, round, final_score / float(round), student_agent.epsilon, duration / 60.0))
                 scores_list.append(final_score / float(round))
                 print (scores_list)
+                hints_list.append(hints_for_game)
+                print (hints_list)
                 done = True
                 break
             else:
@@ -98,6 +102,8 @@ if __name__ == "__main__":
                       .format(e, EPISODES, round, final_score / float(round), student_agent.epsilon, duration / 60.0))
                 scores_list.append(final_score / float(round))
                 print (scores_list)
+                hints_list.append(hints_for_game)
+                print (hints_list)
                 done = True
                 break
             ''' End check for check code'''
@@ -115,6 +121,7 @@ if __name__ == "__main__":
 
                 # get teacher action
                 teacher_action_index = teacher_agent.act(teacher_state)
+                hints_for_game[teacher_action_index] += 1
                 if len(optimal_piece_move_indices_maybe) == 0:
                     teacher_action_index = 0
                     print('error avoided')
@@ -167,6 +174,8 @@ if __name__ == "__main__":
                       .format(e, EPISODES, round, final_score / float(round), student_agent.epsilon, duration / 60.0))
                 scores_list.append(final_score / float(round))
                 print (scores_list)
+                hints_list.append(hints_for_game)
+                print (hints_list)
                 done = True
                 new_state = util.toBit(pos.getNewState(dqn_move))
                 student_agent.remember(state, dqn_move_index, -5000, new_state, done)
@@ -232,6 +241,8 @@ if __name__ == "__main__":
                       .format(e, EPISODES, round, final_score / float(round), student_agent.epsilon, duration / 60.0))
                 scores_list.append(final_score / float(round))
                 print (scores_list)
+                hints_list.append(hints_for_game)
+                print (hints_list)
                 done = True
                 break
 
