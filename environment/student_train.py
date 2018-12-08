@@ -24,11 +24,11 @@ if __name__ == "__main__":
     Modes
     - if with_teacher is set to True, then train with teacher
     '''
-    with_teacher = False
+    with_teacher = True
     episodes_per_student = 1
-    EPISODES = 3
+    EPISODES = 250
     student_action_size = 1856
-    start_episode = 247
+    start_episode = 109
     teacher_agent = models.TeacherAgent()
     student_agent = models.StudentAgent()
     teacher_agent.load('save/teacher.h5')
@@ -106,6 +106,7 @@ if __name__ == "__main__":
 
             ''' TEACHER '''
             if with_teacher:
+                print("using teacher")
                 copy_moves_list = moves_list[:]
                 teacher_state, optimal_piece_move_indices_maybe, best_move_index, had_a_nan = util.getTeacherState(dqn_move_index, valid_move_indices, possible_actions, copy_moves_list, deep)
                 if print_game:
