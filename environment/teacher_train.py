@@ -30,7 +30,10 @@ if __name__ == "__main__":
     student_agent = models.StudentAgent()
     batch_size = 8
     scores_list = []
-
+    '''ADDED'''
+    total_hint_dis = {0:0, 1:0, 2:0}
+    threshold_product = 3.0 / 144.0
+    '''END ADDED'''
     # Creating a list of all possible actions of student agent on the chessboard
     possible_actions = util.get_possible_actions(student_action_size)
 
@@ -39,6 +42,8 @@ if __name__ == "__main__":
             filename = 'save/without_teacher_' + str(int((e / 40) * 25)) + '.h5'
             student_agent.load(filename)
             print('training student: {}'.format(str(int((e / 40) * 25))))
+        hint_list = []
+        hint_map = {0:0, 1:0, 2:0}
         start_time = time.time()
         print_game = True#(e + 1) % 25 == 0
         check_mated_yet = False
@@ -69,6 +74,23 @@ if __name__ == "__main__":
                 scores_list.append(final_score / float(round))
                 print (scores_list)
                 done = True
+                '''ADDED'''
+                for i in range(3):
+                    total_hint_dis[i] += hint_map[i]
+                total = total_hint_dis[0] + total_hint_dis[1] + total_hint_dis[2]
+                none_prop = (total_hint_dis[0] + 0.0) / total
+                part_prop = (total_hint_dis[1] + 0.0) / total
+                if 1.0 - none_prop - part_prop < 0.5:
+                    print("Full hint proportion weirdly low at: " + str(1.0 - none_prop - part_prop))
+                if none_prop * part_prop < threshold_product:
+                    first_indicator = ""
+                    second_indicator = " only "
+                    if none_prop < part_prop:
+                        first_indicator, second_indicator = second_indicator, first_indicator
+                    print("It's been "+ str(len(total) + " episodes: "))
+                    print("and there have been " + first_indicator + str(none_prop * total) + " no hints")
+                    print("and there have been" + second_indicator + str(part_prop * total) + " partial hints")
+                '''END ADDED'''
                 break
             else:
                 score_before_model_move = (-1)*int(before_output_list[9]) # changed from 9
@@ -96,6 +118,23 @@ if __name__ == "__main__":
                 scores_list.append(final_score / float(round))
                 print (scores_list)
                 done = True
+                '''ADDED'''
+                for i in range(3):
+                    total_hint_dis[i] += hint_map[i]
+                total = total_hint_dis[0] + total_hint_dis[1] + total_hint_dis[2]
+                none_prop = (total_hint_dis[0] + 0.0) / total
+                part_prop = (total_hint_dis[1] + 0.0) / total
+                if 1.0 - none_prop - part_prop < 0.5:
+                    print("Full hint proportion weirdly low at: " + str(1.0 - none_prop - part_prop))
+                if none_prop * part_prop < threshold_product:
+                    first_indicator = ""
+                    second_indicator = " only "
+                    if none_prop < part_prop:
+                        first_indicator, second_indicator = second_indicator, first_indicator
+                    print("It's been "+ str(len(total) + " episodes: "))
+                    print("and there have been " + first_indicator + str(none_prop * total) + " no hints")
+                    print("and there have been" + second_indicator + str(part_prop * total) + " partial hints")
+                '''END ADDED'''
                 break
             ''' End check for check code'''
 
@@ -116,6 +155,10 @@ if __name__ == "__main__":
                     teacher_action_index = 0
                     print('error avoided')
                 if teacher_action_index == 1:
+                    '''ADDED'''
+                    hint_list.append("partial")
+                    hint_map[1] += 1
+                    '''END ADDED'''
                     move_index_based_on_partial = student_agent.act(state, optimal_piece_move_indices_maybe)
                     while move_index_based_on_partial not in optimal_piece_move_indices_maybe:
                          move_index_based_on_partial = random.choice(optimal_piece_move_indices_maybe)
@@ -128,10 +171,18 @@ if __name__ == "__main__":
                     if print_game:
                         print("optimal piece moves: ", optimal_piece_moves)
                 elif teacher_action_index == 2:
+                    '''ADDED'''
+                    hint_list.append("full")
+                    hint_map[2] += 1
+                    '''END ADDED'''
                     if print_game:
                         print("Full hint: ", possible_actions[best_move_index])
                     dqn_move_index = best_move_index
                 else:
+                    '''ADDED'''
+                    hint_list.append("No hint")
+                    hint_map[0] += 1
+                    '''END ADDED'''
                     if print_game:
                         print("Not a bit of a hint (no hint)")
                     assert teacher_action_index == 0
@@ -168,6 +219,23 @@ if __name__ == "__main__":
                 done = True
                 new_state = util.toBit(pos.getNewState(dqn_move))
                 student_agent.remember(state, dqn_move_index, -5000, new_state, done)
+                '''ADDED'''
+                for i in range(3):
+                    total_hint_dis[i] += hint_map[i]
+                total = total_hint_dis[0] + total_hint_dis[1] + total_hint_dis[2]
+                none_prop = (total_hint_dis[0] + 0.0) / total
+                part_prop = (total_hint_dis[1] + 0.0) / total
+                if 1.0 - none_prop - part_prop < 0.5:
+                    print("Full hint proportion weirdly low at: " + str(1.0 - none_prop - part_prop))
+                if none_prop * part_prop < threshold_product:
+                    first_indicator = ""
+                    second_indicator = " only "
+                    if none_prop < part_prop:
+                        first_indicator, second_indicator = second_indicator, first_indicator
+                    print("It's been "+ str(len(total) + " episodes: "))
+                    print("and there have been " + first_indicator + str(none_prop * total) + " no hints")
+                    print("and there have been" + second_indicator + str(part_prop * total) + " partial hints")
+                '''END ADDED'''
                 break
             else:
                 score_after_model_move = int(after_output['info'].split(" ")[9]) # changed from 9
@@ -210,7 +278,9 @@ if __name__ == "__main__":
                     optimal_move_index = possible_actions.index((util.convert_to_nums(after_output['move'][0:2]),util.convert_to_nums(after_output['move'][2:])))
                     score_optimal = util.get_move_value(optimal_move_index, moves_list, possible_actions, deep)
                     #print("score - score which should be negative: " + str(score_student - score_optimal))
-                    eta = 0 if teacher_action_index == 0 else 800
+                    '''Changed'''
+                    eta = 800 if teacher_action_index == 0 else 400 #Used to be 0; 800 instead of 800;400
+                    '''End changed'''
                     reward = 1200.0 + score_student - score_optimal + eta #Use ETA if teacher_action_index = 1
                     print(reward)
                     if len(teacher_agent.not_yet_rewarded) > 0:
@@ -256,6 +326,23 @@ if __name__ == "__main__":
                 scores_list.append(final_score / float(round))
                 print (scores_list)
                 done = True
+                '''ADDED'''
+                for i in range(3):
+                    total_hint_dis[i] += hint_map[i]
+                total = total_hint_dis[0] + total_hint_dis[1] + total_hint_dis[2]
+                none_prop = (total_hint_dis[0] + 0.0) / total
+                part_prop = (total_hint_dis[1] + 0.0) / total
+                if 1.0 - none_prop - part_prop < 0.5:
+                    print("Full hint proportion weirdly low at: " + str(1.0 - none_prop - part_prop))
+                if none_prop * part_prop < threshold_product:
+                    first_indicator = ""
+                    second_indicator = " only "
+                    if none_prop < part_prop:
+                        first_indicator, second_indicator = second_indicator, first_indicator
+                    print("It's been "+ str(len(total) + " episodes: "))
+                    print("and there have been " + first_indicator + str(none_prop * total) + " no hints")
+                    print("and there have been" + second_indicator + str(part_prop * total) + " partial hints")
+                '''END ADDED'''
                 break
 
             ''' End check for check code'''
