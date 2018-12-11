@@ -26,9 +26,9 @@ if __name__ == "__main__":
     '''
     with_teacher = True
     episodes_per_student = 1
-    EPISODES = 138
+    EPISODES = 135
     student_action_size = 1856
-    start_episode = 113
+    start_episode = 117
     teacher_agent = models.TeacherAgent()
     student_agent = models.StudentAgent()
     teacher_agent.load('save/teacher.h5')
@@ -39,6 +39,7 @@ if __name__ == "__main__":
     student_agent.load(filename)
     batch_size = 8
     scores_list = []
+    old_scores_list = []
     hints_list = []
     partial_hint_list = []
 
@@ -54,6 +55,7 @@ if __name__ == "__main__":
         print ("episode: ", e)
         deep = Engine(depth=20) # Initialize Stockfish
         final_score = 0 # Initialize final score for the game
+        old_final_score = 0
         done = False
         pos = game.Position(util.initial, 0, (True,True), (True,True), 0, 0)
         searcher = game.Searcher()
@@ -76,6 +78,8 @@ if __name__ == "__main__":
                       .format(e, EPISODES, round, final_score / float(round), student_agent.epsilon, duration / 60.0))
                 scores_list.append(final_score / float(round))
                 print (scores_list)
+                old_scores_list.append(old_final_score / float(round))
+                print (old_scores_list)
                 hints_list.append(hints_for_game)
                 print (hints_list)
                 partial_hint_list.append(partial_diffs_for_game)
@@ -83,7 +87,7 @@ if __name__ == "__main__":
                 done = True
                 break
             else:
-                score_before_model_move = (-1)*int(before_output_list[9]) # changed from 9
+                score_before_model_move = int(before_output_list[9]) # changed from 9
 
             # get possible valid moves of student
             possibly_valid_moves = [m for m in pos.gen_moves(False)]
@@ -106,6 +110,8 @@ if __name__ == "__main__":
                       .format(e, EPISODES, round, final_score / float(round), student_agent.epsilon, duration / 60.0))
                 scores_list.append(final_score / float(round))
                 print (scores_list)
+                old_scores_list.append(old_final_score / float(round))
+                print (old_scores_list)
                 hints_list.append(hints_for_game)
                 print (hints_list)
                 partial_hint_list.append(partial_diffs_for_game)
@@ -184,6 +190,8 @@ if __name__ == "__main__":
                       .format(e, EPISODES, round, final_score / float(round), student_agent.epsilon, duration / 60.0))
                 scores_list.append(final_score / float(round))
                 print (scores_list)
+                old_scores_list.append(old_final_score / float(round))
+                print (old_scores_list)
                 hints_list.append(hints_for_game)
                 print (hints_list)
                 partial_hint_list.append(partial_diffs_for_game)
@@ -202,6 +210,7 @@ if __name__ == "__main__":
             new_state = util.toBit(pos.getNewState(dqn_move))
             reward = score_after_model_move - score_before_model_move
             final_score += reward
+            old_final_score += (score_after_model_move + score_before_model_move)
             student_agent.remember(state, dqn_move_index, reward, new_state, done)
             state = new_state
 
@@ -256,6 +265,8 @@ if __name__ == "__main__":
                       .format(e, EPISODES, round, final_score / float(round), student_agent.epsilon, duration / 60.0))
                 scores_list.append(final_score / float(round))
                 print (scores_list)
+                old_scores_list.append(old_final_score / float(round))
+                print (old_scores_list)
                 hints_list.append(hints_for_game)
                 print (hints_list)
                 partial_hint_list.append(partial_diffs_for_game)

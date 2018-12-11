@@ -28,10 +28,11 @@ if __name__ == "__main__":
     episodes_per_student = 25
     EPISODES = 20
     student_action_size = 1856
-    start_episode = 0
+    start_episode = 21
     teacher_agent = models.TeacherAgent()
     student_agent = models.StudentAgent()
     teacher_agent.load('save/teacher.h5')
+    #student_agent.load('save/with_random_25.h5')
     batch_size = 8
     scores_list = []
     matched_list = []
@@ -41,7 +42,7 @@ if __name__ == "__main__":
     # Creating a list of all possible actions of student agent on the chessboard
     possible_actions = util.get_possible_actions(student_action_size)
 
-    for e in range(EPISODES):
+    for e in range(20, 50):
         if e % 10 == 0: # 10 games per student
             filename = 'save/with_random_' + str(int((e / 10 + 1) * 25)) + '.h5'
             student_agent.load(filename)
