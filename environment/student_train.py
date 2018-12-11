@@ -26,9 +26,9 @@ if __name__ == "__main__":
     '''
     with_teacher = True
     episodes_per_student = 1
-    EPISODES = 250
+    EPISODES = 138
     student_action_size = 1856
-    start_episode = 109
+    start_episode = 113
     teacher_agent = models.TeacherAgent()
     student_agent = models.StudentAgent()
     teacher_agent.load('save/teacher.h5')
@@ -40,11 +40,13 @@ if __name__ == "__main__":
     batch_size = 8
     scores_list = []
     hints_list = []
+    partial_hint_list = []
 
     # Creating a list of all possible actions of student agent on the chessboard
     possible_actions = util.get_possible_actions(student_action_size)
 
-    for e in range(start_episode + 1, start_episode + 1 + EPISODES):
+    for e in range(start_episode + 1, start_episode + 1 + EPISODES + 1):
+        partial_diffs_for_game = []
         hints_for_game = {0:0, 1:0, 2:0}
         start_time = time.time()
         print_game = (e + 1) % 25 == 0
@@ -76,6 +78,8 @@ if __name__ == "__main__":
                 print (scores_list)
                 hints_list.append(hints_for_game)
                 print (hints_list)
+                partial_hint_list.append(partial_diffs_for_game)
+                print (partial_hint_list)
                 done = True
                 break
             else:
@@ -104,6 +108,8 @@ if __name__ == "__main__":
                 print (scores_list)
                 hints_list.append(hints_for_game)
                 print (hints_list)
+                partial_hint_list.append(partial_diffs_for_game)
+                print (partial_hint_list)
                 done = True
                 break
             ''' End check for check code'''
@@ -130,6 +136,8 @@ if __name__ == "__main__":
                     while move_index_based_on_partial not in optimal_piece_move_indices_maybe:
                          move_index_based_on_partial = random.choice(optimal_piece_move_indices_maybe)
                     dqn_move_index = move_index_based_on_partial
+                    diff = util.get_move_value(best_move_index, moves_list, possible_actions, deep) - util.get_move_value(dqn_move_index, moves_list, possible_actions, deep)
+                    partial_diffs_for_game.append(diff)
                     if print_game:
                         print("Partial mint, chocolate chip mint")
                     optimal_piece_moves = []
@@ -138,10 +146,12 @@ if __name__ == "__main__":
                     if print_game:
                         print("optimal piece moves: ", optimal_piece_moves)
                 elif teacher_action_index == 2:
+                    partial_diffs_for_game.append(None)
                     if print_game:
                         print("Full hint: ", possible_actions[best_move_index])
                     dqn_move_index = best_move_index
                 else:
+                    partial_diffs_for_game.append(None)
                     if print_game:
                         print("Not a bit of a hint (no hint)")
                     assert teacher_action_index == 0
@@ -176,6 +186,10 @@ if __name__ == "__main__":
                 print (scores_list)
                 hints_list.append(hints_for_game)
                 print (hints_list)
+                partial_hint_list.append(partial_diffs_for_game)
+                print (partial_diffs_for_game)
+                partial_hint_list.append(partial_diffs_for_game)
+                print (partial_hint_list)
                 done = True
                 new_state = util.toBit(pos.getNewState(dqn_move))
                 student_agent.remember(state, dqn_move_index, -5000, new_state, done)
@@ -202,7 +216,8 @@ if __name__ == "__main__":
             #         score_student = get_move_value(dqn_move_index, moves_list, possible_actions, deep)
             #         optimal_move_index = possible_actions.index((convert_to_nums(after_output['move'][0:2]),convert_to_nums(after_output['move'][2:])))
             #         score_optimal = get_move_value(optimal_move_index, moves_list, possible_actions, deep)
-            #         reward = 300.0 + score_student - score_optimal #Use ETA if teacher_action_index = 1
+            #         eta = 0 if teacher_index == 0 else 800
+            #         reward = 1200.0 + score_student - score_optimal + eta #Use ETA if teacher_action_index = 1
             #         if len(teacher_agent.not_yet_rewarded) > 0:
             #             most_recent = teacher_agent.not_yet_rewarded[-1]
             #             if len(most_recent) == 3:
@@ -243,6 +258,8 @@ if __name__ == "__main__":
                 print (scores_list)
                 hints_list.append(hints_for_game)
                 print (hints_list)
+                partial_hint_list.append(partial_diffs_for_game)
+                print (partial_hint_list)
                 done = True
                 break
 

@@ -198,7 +198,8 @@ def get_four_game_average_score(teacher_agent, student_agent, tune_teacher):
             #         score_student = get_move_value(dqn_move_index, moves_list, possible_actions, deep)
             #         optimal_move_index = possible_actions.index((convert_to_nums(after_output['move'][0:2]),convert_to_nums(after_output['move'][2:])))
             #         score_optimal = get_move_value(optimal_move_index, moves_list, possible_actions, deep)
-            #         reward = 300.0 + score_student - score_optimal #Use ETA if teacher_action_index = 1
+            #         eta = 0 if teacher_index == 0 else 800
+            #         reward = 1200.0 + score_student - score_optimal + eta #Use ETA if teacher_action_index = 1
             #         if len(teacher_agent.not_yet_rewarded) > 0:
             #             most_recent = teacher_agent.not_yet_rewarded[-1]
             #             if len(most_recent) == 3:

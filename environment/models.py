@@ -25,7 +25,7 @@ class TeacherAgent:
         self.epsilon = 0.5
         self.epsilon_min = 0.2
         self.epsilon_decay = 0.99543
-        self.learning_rate = 0.002698726297401723
+        self.learning_rate = 0.01#0.002698726297401723
         self.model = self._build_model()
         self.moves_since_hint = 0
         self.not_yet_rewarded = []
@@ -42,20 +42,71 @@ class TeacherAgent:
     def remember(self, state, action, reward, next_state, done):
         self.memory.append((state, action, reward, next_state, done))
 
-    def act(self, state):
-        if self.moves_since_hint == 2: #Meaning the teacher waits at most 3 moves for a reward, could be tweaked
+    def random_teacher_act(self):
+        if self.moves_since_hint == 2:
             self.moves_since_hint = 0
-            return 2 #This enforces that we don't go too long without giving hints (could change to full OR partial hint l8r)
+            # if np.random.rand() < self.epsilon:
+            #     random_index = random.choice([0, 1])
+            #     print ("random action: {}".format(str(random_index)))
+            random_index = random.choice([0, 1])
+            return random_index
+        else:
+            random_index = random.choice([0, 1, 2])
+            if random_index == 2:
+                self.moves_since_hint += 1
+            else:
+                self.moves_since_hint = 0
+            return random_index
+        #         act_values = self.model.predict(state)
+        #         nonrandom_index = np.argmax(act_values[0][:2])
+        #         assert nonrandom_index * nonrandom_index == nonrandom_index
+        #         print ("non-random action: {}".format(str(nonrandom_index)))
+        #         return nonrandom_index
+        #     #return 2 #This enforces that we don't go too long without giving hints (could change to full OR partial hint l8r)
+        # if np.random.rand() <= self.epsilon:
+        #     random_index = random.randrange(self.action_size)
+        #     print ("random action: {}".format(str(random_index)))
+        #     if random_index == 2: #changedd
+        #         self.moves_since_hint += 1
+        #     else:
+        #         self.moves_since_hint = 0
+        #     return random_index
+        # act_values = self.model.predict(state)
+        # nonrandom_index = np.argmax(act_values[0])
+        # print ("non-random action: {}".format(str(nonrandom_index)))
+        # if nonrandom_index == 2:#changedddddddd
+        #     self.moves_since_hint += 1
+        # else:
+        #     self.moves_since_hint = 0
+        # return nonrandom_index
+
+
+    def act(self, state):
+        if self.moves_since_hint == 2:
+            self.moves_since_hint = 0
+            if np.random.rand() < self.epsilon:
+                random_index = random.choice([0, 1])
+                print ("random action: {}".format(str(random_index)))
+                return random_index
+            else:
+                act_values = self.model.predict(state)
+                nonrandom_index = np.argmax(act_values[0][:2])
+                assert nonrandom_index * nonrandom_index == nonrandom_index
+                print ("non-random action: {}".format(str(nonrandom_index)))
+                return nonrandom_index
+            #return 2 #This enforces that we don't go too long without giving hints (could change to full OR partial hint l8r)
         if np.random.rand() <= self.epsilon:
             random_index = random.randrange(self.action_size)
-            if random_index == 0:
+            print ("random action: {}".format(str(random_index)))
+            if random_index == 2: #changedd
                 self.moves_since_hint += 1
             else:
                 self.moves_since_hint = 0
             return random_index
         act_values = self.model.predict(state)
         nonrandom_index = np.argmax(act_values[0])
-        if nonrandom_index == 0:
+        print ("non-random action: {}".format(str(nonrandom_index)))
+        if nonrandom_index == 2:#changedddddddd
             self.moves_since_hint += 1
         else:
             self.moves_since_hint = 0
@@ -94,9 +145,9 @@ class StudentAgent:
         self.action_size = action_size
         self.memory = deque(maxlen=2000)
         self.gamma = 0.9213798872899134
-        self.epsilon = 0.0# 0.5
-        self.epsilon_min = 0.0#0.2
-        self.epsilon_decay = 1.0#0.999
+        self.epsilon = 0.5
+        self.epsilon_min = 0.2
+        self.epsilon_decay = 0.999
         self.learning_rate = 0.0042981037511488785
         self.model = self._build_model()
         self.batch_size = 8

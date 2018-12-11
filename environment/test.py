@@ -26,7 +26,7 @@ if __name__ == "__main__":
     '''
     with_teacher = False
     episodes_per_student = 25
-    EPISODES = 250
+    EPISODES = 20
     student_action_size = 1856
     start_episode = 0
     teacher_agent = models.TeacherAgent()
@@ -42,12 +42,12 @@ if __name__ == "__main__":
     possible_actions = util.get_possible_actions(student_action_size)
 
     for e in range(EPISODES):
-        if e % 25 == 0: # 10 games per student
-            filename = 'save/without_teacher_' + str(int((e / 25) * 25)) + '.h5'
+        if e % 10 == 0: # 10 games per student
+            filename = 'save/with_random_' + str(int((e / 10 + 1) * 25)) + '.h5'
             student_agent.load(filename)
-            print('testing {}: {}'.format(filename, str(int((e / 25) * 25))))
+            print('testing {}: {}'.format(filename, str(int((e / 10 + 1) * 25))))
         start_time = time.time()
-        print_game = (e + 1) % 25 == 0
+        print_game = (e + 1) % 10 == 0
         check_mated_yet = False
         print ("episode: ", e)
         deep = Engine(depth=20) # Initialize Stockfish
@@ -240,7 +240,8 @@ if __name__ == "__main__":
             #         score_student = get_move_value(dqn_move_index, moves_list, possible_actions, deep)
             #         optimal_move_index = possible_actions.index((convert_to_nums(after_output['move'][0:2]),convert_to_nums(after_output['move'][2:])))
             #         score_optimal = get_move_value(optimal_move_index, moves_list, possible_actions, deep)
-            #         reward = 300.0 + score_student - score_optimal #Use ETA if teacher_action_index = 1
+            #         eta = 0 if teacher_index == 0 else 800
+            #         reward = 1200.0 + score_student - score_optimal + eta #Use ETA if teacher_action_index = 1
             #         if len(teacher_agent.not_yet_rewarded) > 0:
             #             most_recent = teacher_agent.not_yet_rewarded[-1]
             #             if len(most_recent) == 3:

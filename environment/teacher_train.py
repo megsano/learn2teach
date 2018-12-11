@@ -20,17 +20,13 @@ from pystockfish import *
 ###############################################################################
 
 if __name__ == "__main__":
-    '''
-    Modes
-    - if with_teacher is set to True, then train with teacher
-    '''
-    with_teacher = False
+    with_teacher = True
     episodes_per_student = 1
     EPISODES = 200
     student_action_size = 1856
     start_student = 125
     teacher_agent = models.TeacherAgent()
-    teacher_agent.load('save/teacher.h5')
+    #teacher_agent.load('save/teacher.h5')
     student_agent = models.StudentAgent()
     batch_size = 8
     scores_list = []
@@ -44,7 +40,7 @@ if __name__ == "__main__":
             student_agent.load(filename)
             print('training student: {}'.format(str(int((e / 40) * 25))))
         start_time = time.time()
-        print_game = (e + 1) % 25 == 0
+        print_game = True#(e + 1) % 25 == 0
         check_mated_yet = False
         print ("episode: ", e)
         deep = Engine(depth=20) # Initialize Stockfish
@@ -58,6 +54,7 @@ if __name__ == "__main__":
             round += 1
             if print_game:
                 game.print_pos(pos)
+            print ("current score: " + str(util.get_current_score(deep)))
             state = util.toBit(pos)
             before_output_list = deep.bestmove()['info'].split(" ")
             if 'mate' in before_output_list:
@@ -75,6 +72,7 @@ if __name__ == "__main__":
                 break
             else:
                 score_before_model_move = (-1)*int(before_output_list[9]) # changed from 9
+                print ("score before model move: ", str(score_before_model_move))
 
             # get possible valid moves of student
             possibly_valid_moves = [m for m in pos.gen_moves(False)]
@@ -150,6 +148,7 @@ if __name__ == "__main__":
             #print("dqn move stockfish: ", str(dqn_move_stockfish))
             #print(moves_list)
             deep.setposition(moves_list)
+            print ("current score after student's move: " + str(util.get_current_score(deep)))
 
 
             # compute score of board after student agent makes action
@@ -171,7 +170,8 @@ if __name__ == "__main__":
                 student_agent.remember(state, dqn_move_index, -5000, new_state, done)
                 break
             else:
-                score_after_model_move = (-1)*int(after_output['info'].split(" ")[9]) # changed from 9
+                score_after_model_move = int(after_output['info'].split(" ")[9]) # changed from 9
+                print ("score after model move: ", str(score_after_model_move))
 
             # Q-Learning
             pos.rotate()
@@ -188,11 +188,31 @@ if __name__ == "__main__":
 
             ''' Teacher Q-learning '''
             if with_teacher:
+                #print ("length of move list: ", str(len(moves_list)))
+                actually_made_move = moves_list.pop()
+                old_moves_list= moves_list[:]
+                old_deep = deep
+                #print ("length of move list after popping: ", str(len(moves_list)))
+                deep.setposition(moves_list)
+                print ("student move is: ", str(possible_actions[dqn_move_index]))
+                score_student = util.get_move_value(dqn_move_index, moves_list, possible_actions, deep)
+                print ("student move value: " + str(score_student))
+                assert old_moves_list == moves_list
+                deep.setposition(old_moves_list)
+                optimal_move_index = possible_actions.index((util.convert_to_nums(after_output['move'][0:2]),util.convert_to_nums(after_output['move'][2:])))
+                print ("optimal move is: ", deep.bestmove()['move'])
+                score_optimal = util.get_move_value(optimal_move_index, old_moves_list, possible_actions, old_deep)
+                print ("optimal move value: " + str(score_optimal))
+                print("student's move and optimal move are the same: ", optimal_move_index == dqn_move_index)
+                print("score - score which should be negative: " + str(score_student - score_optimal))
                 if teacher_action_index != 2:
-                    score_student = get_move_value(dqn_move_index, moves_list, possible_actions, deep)
-                    optimal_move_index = possible_actions.index((convert_to_nums(after_output['move'][0:2]),convert_to_nums(after_output['move'][2:])))
-                    score_optimal = get_move_value(optimal_move_index, moves_list, possible_actions, deep)
-                    reward = 300.0 + score_student - score_optimal #Use ETA if teacher_action_index = 1
+                    score_student = util.get_move_value(dqn_move_index, moves_list, possible_actions, deep)
+                    optimal_move_index = possible_actions.index((util.convert_to_nums(after_output['move'][0:2]),util.convert_to_nums(after_output['move'][2:])))
+                    score_optimal = util.get_move_value(optimal_move_index, moves_list, possible_actions, deep)
+                    #print("score - score which should be negative: " + str(score_student - score_optimal))
+                    eta = 0 if teacher_action_index == 0 else 800
+                    reward = 1200.0 + score_student - score_optimal + eta #Use ETA if teacher_action_index = 1
+                    print(reward)
                     if len(teacher_agent.not_yet_rewarded) > 0:
                         most_recent = teacher_agent.not_yet_rewarded[-1]
                         if len(most_recent) == 3:
@@ -208,6 +228,10 @@ if __name__ == "__main__":
                 else:
                     not_yet_remembered_list = [teacher_state, teacher_action_index, done]
                     teacher_agent.not_yet_rewarded.append(not_yet_remembered_list)
+                #print ("length of move list still after popping: ", str(len(moves_list)))
+                moves_list.append(actually_made_move)
+                #print ("length of move list after appending: ", str(len(moves_list)))
+                deep.setposition(moves_list)
             ''' Teacher Q-learning '''
 
             '''Begin check for check code'''
@@ -249,8 +273,8 @@ if __name__ == "__main__":
             if len(student_agent.memory) > student_agent.batch_size:
                 student_agent.replay(student_agent.batch_size)
 
-            if len(teacher_agent.memory) > batch_size:
-                teacher_agent.replay(batch_size)
+            if len(teacher_agent.memory) > 1:
+                teacher_agent.replay(1)
 
         # save teacher every name
-        teacher_agent.save('save/teacher.h5')
+        teacher_agent.save('save/teacher_modified.h5')

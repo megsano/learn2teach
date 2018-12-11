@@ -24,14 +24,18 @@ Output: value of the move
 def get_move_value(move_index, moves_list, possible_actions, deep):
     before_output = deep.bestmove() # computing score of board before student agent makes action
     before_output_list = before_output['info'].split(" ")
-    score_before_that_move = (-1)*int(before_output_list[9]) # changed from 9
+    if len(moves_list) % 2 == 1:
+        multiplier = -1.0
+    else:
+        multiplier = 1.0
+    score_before_that_move = multiplier * int(before_output_list[9]) # changed from 9
     move_tuple = possible_actions[move_index]
     move_for_stockfish = game.render(119-move_tuple[0]) + game.render(119-move_tuple[1])
     moves_list.append(move_for_stockfish)
     deep.setposition(moves_list) #SYNTAX!!
     after_output = deep.bestmove()
     after_output_list = after_output['info'].split(" ")
-    score_after_that_move = (-1)*int(after_output_list[9]) # changed from 9
+    score_after_that_move = (-1) * multiplier * int(after_output_list[9]) # changed from 9
     last_thing = moves_list.pop()
     deep.setposition(moves_list) #Does set and reset deep position -- probably not buggy, but look into
     return score_after_that_move - score_before_that_move
@@ -322,6 +326,13 @@ def get_material_difference(posi):
         elif piece == 'Q':
             student_material += 9
     return student_material - opponent_material
+
+
+def get_current_score(deep):
+    before_output = deep.bestmove() # computing score of board before student agent makes action
+    before_output_list = before_output['info'].split(" ")
+    score_before_that_move = int(before_output_list[9])
+    return score_before_that_move
 
 
 ###############################################################################
