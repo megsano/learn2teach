@@ -25,15 +25,15 @@ class TeacherAgent:
         self.epsilon = 0.5
         self.epsilon_min = 0.2
         self.epsilon_decay = 0.99543
-        self.learning_rate = 0.01#0.002698726297401723
+        self.learning_rate = 0.002698726297401723
         self.model = self._build_model()
         self.moves_since_hint = 0
         self.not_yet_rewarded = []
 
     def _build_model(self):
         model = Sequential()
-        model.add(Dense(24, input_dim=self.state_size, activation='relu'))
-        model.add(Dense(24, activation='relu'))
+        model.add(Dense(24, input_dim=self.state_size, activation='sigmoid'))
+        model.add(Dense(24, activation='sigmoid'))
         model.add(Dense(self.action_size, activation='linear'))
         model.compile(loss='mse',
                       optimizer=Adam(lr=self.learning_rate))
@@ -86,18 +86,19 @@ class TeacherAgent:
             self.moves_since_hint = 0
             if np.random.rand() < self.epsilon:
                 random_index = random.choice([0, 1])
-                print ("random action: {}".format(str(random_index)))
+                #print ("random action: {}".format(str(random_index)))
                 return random_index
             else:
                 act_values = self.model.predict(state)
                 nonrandom_index = np.argmax(act_values[0][:2])
                 assert nonrandom_index * nonrandom_index == nonrandom_index
-                print ("non-random action: {}".format(str(nonrandom_index)))
+                #print ("act values: ", act_values[0])
+                #print ("non-random action: {}".format(str(nonrandom_index)))
                 return nonrandom_index
             #return 2 #This enforces that we don't go too long without giving hints (could change to full OR partial hint l8r)
         if np.random.rand() <= self.epsilon:
             random_index = random.randrange(self.action_size)
-            print ("random action: {}".format(str(random_index)))
+            #print ("random action: {}".format(str(random_index)))
             if random_index == 2: #changedd
                 self.moves_since_hint += 1
             else:
@@ -105,7 +106,8 @@ class TeacherAgent:
             return random_index
         act_values = self.model.predict(state)
         nonrandom_index = np.argmax(act_values[0])
-        print ("non-random action: {}".format(str(nonrandom_index)))
+        #print ("act values: ", act_values[0])
+        #print ("non-random action: {}".format(str(nonrandom_index)))
         if nonrandom_index == 2:#changedddddddd
             self.moves_since_hint += 1
         else:
@@ -150,12 +152,12 @@ class StudentAgent:
         self.epsilon_decay = 0.999
         self.learning_rate = 0.0042981037511488785
         self.model = self._build_model()
-        self.batch_size = 8
+        self.batch_size = 32
 
     def _build_model(self):
         model = Sequential()
-        model.add(Dense(24, input_dim=self.state_size, activation='relu'))
-        model.add(Dense(24, activation='relu'))
+        model.add(Dense(24, input_dim=self.state_size, activation='sigmoid'))
+        model.add(Dense(24, activation='sigmoid'))
         model.add(Dense(self.action_size, activation='linear'))
         model.compile(loss='mse',
                       optimizer=Adam(lr=self.learning_rate))
@@ -181,6 +183,7 @@ class StudentAgent:
             newVals.append(new_act_values[startIndex + i])
         for j in range(startIndex):
             newVals.append(new_act_values[j])
+        #print ("act values: ", newVals)
         rotated_index = np.argmax(newVals)
         return (rotated_index + startIndex) % len(new_act_values)
 

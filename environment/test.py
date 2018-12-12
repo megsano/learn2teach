@@ -26,9 +26,9 @@ if __name__ == "__main__":
     '''
     with_teacher = False
     episodes_per_student = 25
-    EPISODES = 20
+    EPISODES = 250
     student_action_size = 1856
-    start_episode = 21
+    start_episode = 0
     teacher_agent = models.TeacherAgent()
     student_agent = models.StudentAgent()
     teacher_agent.load('save/teacher.h5')
@@ -42,13 +42,13 @@ if __name__ == "__main__":
     # Creating a list of all possible actions of student agent on the chessboard
     possible_actions = util.get_possible_actions(student_action_size)
 
-    for e in range(20, 50):
-        if e % 10 == 0: # 10 games per student
-            filename = 'save/with_random_' + str(int((e / 10 + 1) * 25)) + '.h5'
+    for e in range(250):
+        if e % 25 == 0: # 10 games per student
+            filename = 'save/with_teacher_' + str(int((e / 25 + 1) * 25)) + '.h5'
             student_agent.load(filename)
-            print('testing {}: {}'.format(filename, str(int((e / 10 + 1) * 25))))
+            print('testing {}: {}'.format(filename, str(int((e / 25 + 1) * 25))))
         start_time = time.time()
-        print_game = (e + 1) % 10 == 0
+        print_game = (e + 1) % 25 == 0
         check_mated_yet = False
         print ("episode: ", e)
         deep = Engine(depth=20) # Initialize Stockfish

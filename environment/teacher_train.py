@@ -26,9 +26,9 @@ if __name__ == "__main__":
     student_action_size = 1856
     start_student = 125
     teacher_agent = models.TeacherAgent()
-    #teacher_agent.load('save/teacher.h5')
+    teacher_agent.load('save/teacher.h5')
     student_agent = models.StudentAgent()
-    batch_size = 8
+    batch_size = 32
     scores_list = []
     '''ADDED'''
     total_hint_dis = {0:0, 1:0, 2:0}
@@ -45,7 +45,7 @@ if __name__ == "__main__":
         hint_list = []
         hint_map = {0:0, 1:0, 2:0}
         start_time = time.time()
-        print_game = True#(e + 1) % 25 == 0
+        print_game = (e + 1) % 25 == 0
         check_mated_yet = False
         print ("episode: ", e)
         deep = Engine(depth=20) # Initialize Stockfish
@@ -59,7 +59,7 @@ if __name__ == "__main__":
             round += 1
             if print_game:
                 game.print_pos(pos)
-            print ("current score: " + str(util.get_current_score(deep)))
+            #print ("current score: " + str(util.get_current_score(deep)))
             state = util.toBit(pos)
             before_output_list = deep.bestmove()['info'].split(" ")
             if 'mate' in before_output_list:
@@ -82,19 +82,23 @@ if __name__ == "__main__":
                 part_prop = (total_hint_dis[1] + 0.0) / total
                 if 1.0 - none_prop - part_prop < 0.5:
                     print("Full hint proportion weirdly low at: " + str(1.0 - none_prop - part_prop))
+                    print("Hint map: ")
+                    print(hint_map)
                 if none_prop * part_prop < threshold_product:
                     first_indicator = ""
                     second_indicator = " only "
                     if none_prop < part_prop:
                         first_indicator, second_indicator = second_indicator, first_indicator
-                    print("It's been "+ str(len(total) + " episodes: "))
+                    print("It's been "+ str(total) + " episodes: ")
                     print("and there have been " + first_indicator + str(none_prop * total) + " no hints")
                     print("and there have been" + second_indicator + str(part_prop * total) + " partial hints")
+                    print("Hint map: ")
+                    print(hint_map)
                 '''END ADDED'''
                 break
             else:
-                score_before_model_move = (-1)*int(before_output_list[9]) # changed from 9
-                print ("score before model move: ", str(score_before_model_move))
+                score_before_model_move = int(before_output_list[9]) # changed from 9
+                #print ("score before model move: ", str(score_before_model_move))
 
             # get possible valid moves of student
             possibly_valid_moves = [m for m in pos.gen_moves(False)]
@@ -126,14 +130,18 @@ if __name__ == "__main__":
                 part_prop = (total_hint_dis[1] + 0.0) / total
                 if 1.0 - none_prop - part_prop < 0.5:
                     print("Full hint proportion weirdly low at: " + str(1.0 - none_prop - part_prop))
+                    print("Hint map: ")
+                    print(hint_map)
                 if none_prop * part_prop < threshold_product:
                     first_indicator = ""
                     second_indicator = " only "
                     if none_prop < part_prop:
                         first_indicator, second_indicator = second_indicator, first_indicator
-                    print("It's been "+ str(len(total) + " episodes: "))
+                    print("It's been "+ str(total) + " episodes: ")
                     print("and there have been " + first_indicator + str(none_prop * total) + " no hints")
                     print("and there have been" + second_indicator + str(part_prop * total) + " partial hints")
+                    print("Hint map: ")
+                    print(hint_map)
                 '''END ADDED'''
                 break
             ''' End check for check code'''
@@ -199,7 +207,7 @@ if __name__ == "__main__":
             #print("dqn move stockfish: ", str(dqn_move_stockfish))
             #print(moves_list)
             deep.setposition(moves_list)
-            print ("current score after student's move: " + str(util.get_current_score(deep)))
+            #print ("current score after student's move: " + str(util.get_current_score(deep)))
 
 
             # compute score of board after student agent makes action
@@ -227,19 +235,23 @@ if __name__ == "__main__":
                 part_prop = (total_hint_dis[1] + 0.0) / total
                 if 1.0 - none_prop - part_prop < 0.5:
                     print("Full hint proportion weirdly low at: " + str(1.0 - none_prop - part_prop))
+                    print("Hint map: ")
+                    print(hint_map)
                 if none_prop * part_prop < threshold_product:
                     first_indicator = ""
                     second_indicator = " only "
                     if none_prop < part_prop:
                         first_indicator, second_indicator = second_indicator, first_indicator
-                    print("It's been "+ str(len(total) + " episodes: "))
+                    print("It's been "+ str(total) + " episodes: ")
                     print("and there have been " + first_indicator + str(none_prop * total) + " no hints")
                     print("and there have been" + second_indicator + str(part_prop * total) + " partial hints")
+                    print("Hint map: ")
+                    print(hint_map)
                 '''END ADDED'''
                 break
             else:
-                score_after_model_move = int(after_output['info'].split(" ")[9]) # changed from 9
-                print ("score after model move: ", str(score_after_model_move))
+                score_after_model_move = (-1)*int(after_output['info'].split(" ")[9]) # changed from 9
+                #print ("score after model move: ", str(score_after_model_move))
 
             # Q-Learning
             pos.rotate()
@@ -262,27 +274,27 @@ if __name__ == "__main__":
                 old_deep = deep
                 #print ("length of move list after popping: ", str(len(moves_list)))
                 deep.setposition(moves_list)
-                print ("student move is: ", str(possible_actions[dqn_move_index]))
+                #print ("student move is: ", str(possible_actions[dqn_move_index]))
                 score_student = util.get_move_value(dqn_move_index, moves_list, possible_actions, deep)
-                print ("student move value: " + str(score_student))
+                #print ("student move value: " + str(score_student))
                 assert old_moves_list == moves_list
                 deep.setposition(old_moves_list)
                 optimal_move_index = possible_actions.index((util.convert_to_nums(after_output['move'][0:2]),util.convert_to_nums(after_output['move'][2:])))
-                print ("optimal move is: ", deep.bestmove()['move'])
+                #print ("optimal move is: ", deep.bestmove()['move'])
                 score_optimal = util.get_move_value(optimal_move_index, old_moves_list, possible_actions, old_deep)
-                print ("optimal move value: " + str(score_optimal))
-                print("student's move and optimal move are the same: ", optimal_move_index == dqn_move_index)
-                print("score - score which should be negative: " + str(score_student - score_optimal))
+                #print ("optimal move value: " + str(score_optimal))
+                #print("student's move and optimal move are the same: ", optimal_move_index == dqn_move_index)
+                #print("score - score which should be negative: " + str(score_student - score_optimal))
                 if teacher_action_index != 2:
                     score_student = util.get_move_value(dqn_move_index, moves_list, possible_actions, deep)
                     optimal_move_index = possible_actions.index((util.convert_to_nums(after_output['move'][0:2]),util.convert_to_nums(after_output['move'][2:])))
                     score_optimal = util.get_move_value(optimal_move_index, moves_list, possible_actions, deep)
                     #print("score - score which should be negative: " + str(score_student - score_optimal))
                     '''Changed'''
-                    eta = 800 if teacher_action_index == 0 else 400 #Used to be 0; 800 instead of 800;400
+                    eta = -800 if teacher_action_index == 0 else 800 #Used to be 0; 800 instead of 800;400
                     '''End changed'''
-                    reward = 1200.0 + score_student - score_optimal + eta #Use ETA if teacher_action_index = 1
-                    print(reward)
+                    reward = 100 + score_student - score_optimal + eta #Use ETA if teacher_action_index = 1
+                    #print(reward)
                     if len(teacher_agent.not_yet_rewarded) > 0:
                         most_recent = teacher_agent.not_yet_rewarded[-1]
                         if len(most_recent) == 3:
@@ -334,14 +346,18 @@ if __name__ == "__main__":
                 part_prop = (total_hint_dis[1] + 0.0) / total
                 if 1.0 - none_prop - part_prop < 0.5:
                     print("Full hint proportion weirdly low at: " + str(1.0 - none_prop - part_prop))
+                    print("Hint map: ")
+                    print(hint_map)
                 if none_prop * part_prop < threshold_product:
                     first_indicator = ""
                     second_indicator = " only "
                     if none_prop < part_prop:
                         first_indicator, second_indicator = second_indicator, first_indicator
-                    print("It's been "+ str(len(total) + " episodes: "))
+                    print("It's been "+ str(total) + " episodes: ")
                     print("and there have been " + first_indicator + str(none_prop * total) + " no hints")
                     print("and there have been" + second_indicator + str(part_prop * total) + " partial hints")
+                    print("Hint map: ")
+                    print(hint_map)
                 '''END ADDED'''
                 break
 
@@ -363,5 +379,5 @@ if __name__ == "__main__":
             if len(teacher_agent.memory) > 1:
                 teacher_agent.replay(1)
 
-        # save teacher every name
-        teacher_agent.save('save/teacher_modified.h5')
+        # # save teacher every name
+        # teacher_agent.save('save/teacher_dummy.h5')
