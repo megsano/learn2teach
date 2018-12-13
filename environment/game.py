@@ -6,14 +6,8 @@ import random
 import re, sys, time
 from itertools import count
 from collections import OrderedDict, namedtuple
-# from stockfish import Stockfish
-# stockfish = Stockfish('/Users/zhelyabuzhsky/Work/stockfish/stockfish-9-64')
 from pystockfish import *
-# random.seed(3)
 deep = Engine(depth=20)
-# from stockfish import Stockfish
-# stockfish = Stockfish
-
 
 ###############################################################################
 # Piece-Square tables. Tune these to change sunfish's behaviour
@@ -491,59 +485,6 @@ def print_pos(pos):
     for i, row in enumerate(pos.board.split()):
         print(' ', 8-i, ' '.join(uni_pieces.get(p, p) for p in row))
     print('    a b c d e f g h \n\n')
-
-
-# def nonDQNmove(moves_list, searcher):
-#     print_pos(pos)
-#     output = deep.bestmove()
-#     best_move = output['move']
-#     score = output['info'].split(" ")[9]
-#     print(" best move : " , best_move, ", score: ", score)
-#
-#     if pos.score <= -MATE_LOWER:
-#         print("You lost")
-#         break
-#
-#         # We query the user until she enters a (pseudo) legal move.
-#         move = None
-#         while move not in pos.gen_moves():
-#             print([m for m in pos.gen_moves()])
-#             your_move = input('Your move: ')
-#             ## input board state to model and get action
-#             print(pos.board)
-#             match = re.match('([a-h][1-8])'*2, your_move)
-#             if match:
-#                 move = parse(match.group(1)), parse(match.group(2))
-#                 print (move)
-#                 moves_list.append(your_move)
-#                 deep.setposition(moves_list)
-#             else:
-#                 # Inform the user when invalid input (e.g. "help") is entered
-#                 print("Please enter a move like g8f6")
-#         pos = pos.move(move)
-#
-#         # After our move we rotate the board and print it again.
-#         # This allows us to see the effect of our move.
-#         print_pos(pos.rotate())
-#
-#         if pos.score <= -MATE_LOWER:
-#             print("You won")
-#             break
-#
-#         # Fire up the engine to look for a move.
-#         move, score = searcher.search(pos, secs=2)
-#
-#         if score == MATE_UPPER:
-#             print("Checkmate!")
-#
-#         # The black player moves from a rotated position, so we have to
-#         # 'back rotate' the move before printing it.
-#         my_move = render(119-move[0]) + render(119-move[1])
-#         print("My move:", my_move)
-#         pos = pos.move(move)
-#         moves_list.append(my_move)
-#         deep.setposition(moves_list)
-
 
 
 

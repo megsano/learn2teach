@@ -37,7 +37,6 @@ def get_four_game_average_score(teacher_agent, student_agent, tune_teacher):
             student_agent = models.StudentAgent()
             student_agent.load(s)
             student_list.append(student_agent)
-        #student_list = [student_agent.load(s) for s in student_file_names]
         assert len(student_list) == 4
     EPISODES = 4
     student_action_size = 1856
@@ -67,16 +66,9 @@ def get_four_game_average_score(teacher_agent, student_agent, tune_teacher):
             state = util.toBit(pos)
             before_output_list = deep.bestmove()['info'].split(" ")
             if 'mate' in before_output_list:
-                #if util.inCheck(pos, True):
-                #    print("You lost, but you're getting there little one")
-                #else:
-                #    print("Huh.  Stalemate.  ")
                 end_time = time.time()
                 duration = end_time - start_time
-                #print("episode: {}/{}, number of rounds: {}, score: {}, e: {:.2}, time : {}"
-                      #.format(e, EPISODES, round, final_score / float(round), student_agent.epsilon, duration / 60.0))
                 scores_list.append(final_score / float(round))
-                #print (scores_list)
                 done = True
                 break
             else:
@@ -93,16 +85,9 @@ def get_four_game_average_score(teacher_agent, student_agent, tune_teacher):
                 if not util.inCheck(newPos, True):
                     valid_move_indices.append(index)
             if len(valid_move_indices) == 0:
-                #if util.inCheck(pos, True):
-                #    print("You lost, but you're getting there little one")
-                #else:
-                #    print("Huh.  Stalemate.  ")
                 end_time = time.time()
                 duration = end_time - start_time
-                #print("episode: {}/{}, number of rounds: {}, score: {}, e: {:.2}, time : {}"
-                #      .format(e, EPISODES, round, final_score / float(round), student_agent.epsilon, duration / 60.0))
                 scores_list.append(final_score / float(round))
-                #print (scores_list)
                 done = True
                 break
             ''' End check for check code'''
@@ -153,8 +138,6 @@ def get_four_game_average_score(teacher_agent, student_agent, tune_teacher):
             # update stockfish based on DQN action
             dqn_move_stockfish = game.render(119-flipped_dqn_move[0]) + game.render(119-flipped_dqn_move[1]) ## used to be dqn_move
             moves_list.append(dqn_move_stockfish)
-            #print("dqn move stockfish: ", str(dqn_move_stockfish))
-            #print(moves_list)
             deep.setposition(moves_list)
 
 
@@ -162,16 +145,9 @@ def get_four_game_average_score(teacher_agent, student_agent, tune_teacher):
             after_output = deep.bestmove()
             after_output_list = after_output['info'].split(" ")
             if 'mate' in after_output_list:
-                #if util.inCheck(pos, True):
-                #    print("You lost, but you're getting there little one")
-                #else:
-                #    print("Huh.  Stalemate.  ")
                 end_time = time.time()
                 duration = end_time - start_time
-                #print("episode: {}/{}, number of rounds: {}, score: {}, e: {:.2}, time : {}"
-                #      .format(e, EPISODES, round, final_score / float(round), student_agent.epsilon, duration / 60.0))
                 scores_list.append(final_score / float(round))
-                #print (scores_list)
                 done = True
                 new_state = util.toBit(pos.getNewState(dqn_move))
                 student_agent.remember(state, dqn_move_index, -5000, new_state, done)
@@ -323,7 +299,6 @@ if __name__ == "__main__":
                 higher_val = params[i] + 0.05 * ranges[i]
             if higher_val <= maxes[i]:
                 print("Increasing parameter ", str(i), " from ", str(params[i]), " to ", str(higher_val))
-                #print("Increasing from " + str(params[i]) + " to " + str(higher_val))
 
                 params[i] = higher_val
                 assign_params(params)
@@ -338,7 +313,6 @@ if __name__ == "__main__":
             else:
                 lower_val = params[i] - 0.05 * ranges[i]
             if lower_val >= mins[i]:
-                #print("Decreasing from " + str(params[i]) + " to " + str(lower_val))
                 print("Decreasing parameter ", str(i), " from ", str(params[i]), " to ", str(lower_val))
                 params[i] = lower_val
                 assign_params(params)
@@ -363,14 +337,3 @@ if __name__ == "__main__":
             for i in range(len(params)):
                 write_file.write(str(params[i]))
                 write_file.write("/////")
-
-# student_agent = StudentAgent()
-# teacher_agent = TeacherAgent()
-# student_net = KerasClassifier(build_fn=student_agent._build_model, verbose=0)
-# learning_rates = [0.001, 0.002, 0.003, 0.004, 0.005]
-# batch_sizes = [2, 4, 8, 16, 32]
-# gammas = [0.9, 0.91, 0.92, 0.93, 0.94, 0.95]
-# hyperparameters = dict(sgd_learning_rate = learning_rates, sgd_batch_size = batch_sizes, sgd_gamma = gammas)
-# grid = GridSearchCV(estimator=student_net, param_grid=hyperparameters)
-# grid_result = grid.fit(features, target)
-# best_params = grid_result.best_params_

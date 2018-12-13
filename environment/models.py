@@ -45,9 +45,6 @@ class TeacherAgent:
     def random_teacher_act(self):
         if self.moves_since_hint == 2:
             self.moves_since_hint = 0
-            # if np.random.rand() < self.epsilon:
-            #     random_index = random.choice([0, 1])
-            #     print ("random action: {}".format(str(random_index)))
             random_index = random.choice([0, 1])
             return random_index
         else:
@@ -57,28 +54,6 @@ class TeacherAgent:
             else:
                 self.moves_since_hint = 0
             return random_index
-        #         act_values = self.model.predict(state)
-        #         nonrandom_index = np.argmax(act_values[0][:2])
-        #         assert nonrandom_index * nonrandom_index == nonrandom_index
-        #         print ("non-random action: {}".format(str(nonrandom_index)))
-        #         return nonrandom_index
-        #     #return 2 #This enforces that we don't go too long without giving hints (could change to full OR partial hint l8r)
-        # if np.random.rand() <= self.epsilon:
-        #     random_index = random.randrange(self.action_size)
-        #     print ("random action: {}".format(str(random_index)))
-        #     if random_index == 2: #changedd
-        #         self.moves_since_hint += 1
-        #     else:
-        #         self.moves_since_hint = 0
-        #     return random_index
-        # act_values = self.model.predict(state)
-        # nonrandom_index = np.argmax(act_values[0])
-        # print ("non-random action: {}".format(str(nonrandom_index)))
-        # if nonrandom_index == 2:#changedddddddd
-        #     self.moves_since_hint += 1
-        # else:
-        #     self.moves_since_hint = 0
-        # return nonrandom_index
 
 
     def act(self, state):
@@ -86,29 +61,22 @@ class TeacherAgent:
             self.moves_since_hint = 0
             if np.random.rand() < self.epsilon:
                 random_index = random.choice([0, 1])
-                #print ("random action: {}".format(str(random_index)))
                 return random_index
             else:
                 act_values = self.model.predict(state)
                 nonrandom_index = np.argmax(act_values[0][:2])
                 assert nonrandom_index * nonrandom_index == nonrandom_index
-                #print ("act values: ", act_values[0])
-                #print ("non-random action: {}".format(str(nonrandom_index)))
                 return nonrandom_index
-            #return 2 #This enforces that we don't go too long without giving hints (could change to full OR partial hint l8r)
         if np.random.rand() <= self.epsilon:
             random_index = random.randrange(self.action_size)
-            #print ("random action: {}".format(str(random_index)))
-            if random_index == 2: #changedd
+            if random_index == 2:
                 self.moves_since_hint += 1
             else:
                 self.moves_since_hint = 0
             return random_index
         act_values = self.model.predict(state)
         nonrandom_index = np.argmax(act_values[0])
-        #print ("act values: ", act_values[0])
-        #print ("non-random action: {}".format(str(nonrandom_index)))
-        if nonrandom_index == 2:#changedddddddd
+        if nonrandom_index == 2:
             self.moves_since_hint += 1
         else:
             self.moves_since_hint = 0
@@ -118,10 +86,6 @@ class TeacherAgent:
         minibatch = random.sample(self.memory, int(batch_size))
         for state, action, reward, next_state, done in minibatch:
             target = reward
-            # if not done: #USED TO BE COMMENTED IN
-            #print ("teacher agent state (should be an array with shape (4, )): ", next_state)
-            # target = (reward + self.gamma *
-            #           np.amax(self.model.predict(next_state)[0]))
             whole_list = self.model.predict(next_state)
             amax_result = np.amax(whole_list[0])
             target = reward + self.gamma * amax_result
@@ -183,7 +147,6 @@ class StudentAgent:
             newVals.append(new_act_values[startIndex + i])
         for j in range(startIndex):
             newVals.append(new_act_values[j])
-        #print ("act values: ", newVals)
         rotated_index = np.argmax(newVals)
         return (rotated_index + startIndex) % len(new_act_values)
 
@@ -191,8 +154,6 @@ class StudentAgent:
         minibatch = random.sample(self.memory, int(batch_size))
         for state, action, reward, next_state, done in minibatch:
             target = reward
-            # if not done: USED TO BE NOT COMMENTED OUT
-                #print ("student agent state length (should be 18): ", len(next_state))
             target = (reward + self.gamma *
                       np.amax(self.model.predict(next_state)[0]))
             target_f = self.model.predict(state)

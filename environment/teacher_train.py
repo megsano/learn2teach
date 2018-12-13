@@ -30,10 +30,6 @@ if __name__ == "__main__":
     student_agent = models.StudentAgent()
     batch_size = 32
     scores_list = []
-    '''ADDED'''
-    total_hint_dis = {0:0, 1:0, 2:0}
-    threshold_product = 3.0 / 144.0
-    '''END ADDED'''
     # Creating a list of all possible actions of student agent on the chessboard
     possible_actions = util.get_possible_actions(student_action_size)
 
@@ -74,27 +70,6 @@ if __name__ == "__main__":
                 scores_list.append(final_score / float(round))
                 print (scores_list)
                 done = True
-                '''ADDED'''
-                for i in range(3):
-                    total_hint_dis[i] += hint_map[i]
-                total = total_hint_dis[0] + total_hint_dis[1] + total_hint_dis[2]
-                none_prop = (total_hint_dis[0] + 0.0) / total
-                part_prop = (total_hint_dis[1] + 0.0) / total
-                if 1.0 - none_prop - part_prop < 0.5:
-                    print("Full hint proportion weirdly low at: " + str(1.0 - none_prop - part_prop))
-                    print("Hint map: ")
-                    print(hint_map)
-                if none_prop * part_prop < threshold_product:
-                    first_indicator = ""
-                    second_indicator = " only "
-                    if none_prop < part_prop:
-                        first_indicator, second_indicator = second_indicator, first_indicator
-                    print("It's been "+ str(total) + " episodes: ")
-                    print("and there have been " + first_indicator + str(none_prop * total) + " no hints")
-                    print("and there have been" + second_indicator + str(part_prop * total) + " partial hints")
-                    print("Hint map: ")
-                    print(hint_map)
-                '''END ADDED'''
                 break
             else:
                 score_before_model_move = int(before_output_list[9]) # changed from 9
@@ -122,27 +97,6 @@ if __name__ == "__main__":
                 scores_list.append(final_score / float(round))
                 print (scores_list)
                 done = True
-                '''ADDED'''
-                for i in range(3):
-                    total_hint_dis[i] += hint_map[i]
-                total = total_hint_dis[0] + total_hint_dis[1] + total_hint_dis[2]
-                none_prop = (total_hint_dis[0] + 0.0) / total
-                part_prop = (total_hint_dis[1] + 0.0) / total
-                if 1.0 - none_prop - part_prop < 0.5:
-                    print("Full hint proportion weirdly low at: " + str(1.0 - none_prop - part_prop))
-                    print("Hint map: ")
-                    print(hint_map)
-                if none_prop * part_prop < threshold_product:
-                    first_indicator = ""
-                    second_indicator = " only "
-                    if none_prop < part_prop:
-                        first_indicator, second_indicator = second_indicator, first_indicator
-                    print("It's been "+ str(total) + " episodes: ")
-                    print("and there have been " + first_indicator + str(none_prop * total) + " no hints")
-                    print("and there have been" + second_indicator + str(part_prop * total) + " partial hints")
-                    print("Hint map: ")
-                    print(hint_map)
-                '''END ADDED'''
                 break
             ''' End check for check code'''
 
@@ -163,10 +117,6 @@ if __name__ == "__main__":
                     teacher_action_index = 0
                     print('error avoided')
                 if teacher_action_index == 1:
-                    '''ADDED'''
-                    hint_list.append("partial")
-                    hint_map[1] += 1
-                    '''END ADDED'''
                     move_index_based_on_partial = student_agent.act(state, optimal_piece_move_indices_maybe)
                     while move_index_based_on_partial not in optimal_piece_move_indices_maybe:
                          move_index_based_on_partial = random.choice(optimal_piece_move_indices_maybe)
@@ -179,18 +129,10 @@ if __name__ == "__main__":
                     if print_game:
                         print("optimal piece moves: ", optimal_piece_moves)
                 elif teacher_action_index == 2:
-                    '''ADDED'''
-                    hint_list.append("full")
-                    hint_map[2] += 1
-                    '''END ADDED'''
                     if print_game:
                         print("Full hint: ", possible_actions[best_move_index])
                     dqn_move_index = best_move_index
                 else:
-                    '''ADDED'''
-                    hint_list.append("No hint")
-                    hint_map[0] += 1
-                    '''END ADDED'''
                     if print_game:
                         print("Not a bit of a hint (no hint)")
                     assert teacher_action_index == 0
@@ -204,11 +146,7 @@ if __name__ == "__main__":
             # update stockfish based on DQN action
             dqn_move_stockfish = game.render(119-flipped_dqn_move[0]) + game.render(119-flipped_dqn_move[1]) ## used to be dqn_move
             moves_list.append(dqn_move_stockfish)
-            #print("dqn move stockfish: ", str(dqn_move_stockfish))
-            #print(moves_list)
             deep.setposition(moves_list)
-            #print ("current score after student's move: " + str(util.get_current_score(deep)))
-
 
             # compute score of board after student agent makes action
             after_output = deep.bestmove()
@@ -250,8 +188,7 @@ if __name__ == "__main__":
                 '''END ADDED'''
                 break
             else:
-                score_after_model_move = (-1)*int(after_output['info'].split(" ")[9]) # changed from 9
-                #print ("score after model move: ", str(score_after_model_move))
+                score_after_model_move = (-1)*int(after_output['info'].split(" ")[9])
 
             # Q-Learning
             pos.rotate()
@@ -268,33 +205,21 @@ if __name__ == "__main__":
 
             ''' Teacher Q-learning '''
             if with_teacher:
-                #print ("length of move list: ", str(len(moves_list)))
                 actually_made_move = moves_list.pop()
                 old_moves_list= moves_list[:]
                 old_deep = deep
-                #print ("length of move list after popping: ", str(len(moves_list)))
                 deep.setposition(moves_list)
-                #print ("student move is: ", str(possible_actions[dqn_move_index]))
                 score_student = util.get_move_value(dqn_move_index, moves_list, possible_actions, deep)
-                #print ("student move value: " + str(score_student))
                 assert old_moves_list == moves_list
                 deep.setposition(old_moves_list)
                 optimal_move_index = possible_actions.index((util.convert_to_nums(after_output['move'][0:2]),util.convert_to_nums(after_output['move'][2:])))
-                #print ("optimal move is: ", deep.bestmove()['move'])
                 score_optimal = util.get_move_value(optimal_move_index, old_moves_list, possible_actions, old_deep)
-                #print ("optimal move value: " + str(score_optimal))
-                #print("student's move and optimal move are the same: ", optimal_move_index == dqn_move_index)
-                #print("score - score which should be negative: " + str(score_student - score_optimal))
                 if teacher_action_index != 2:
                     score_student = util.get_move_value(dqn_move_index, moves_list, possible_actions, deep)
                     optimal_move_index = possible_actions.index((util.convert_to_nums(after_output['move'][0:2]),util.convert_to_nums(after_output['move'][2:])))
                     score_optimal = util.get_move_value(optimal_move_index, moves_list, possible_actions, deep)
-                    #print("score - score which should be negative: " + str(score_student - score_optimal))
-                    '''Changed'''
-                    eta = -800 if teacher_action_index == 0 else 800 #Used to be 0; 800 instead of 800;400
-                    '''End changed'''
+                    eta = -800 if teacher_action_index == 0 else 800
                     reward = 100 + score_student - score_optimal + eta #Use ETA if teacher_action_index = 1
-                    #print(reward)
                     if len(teacher_agent.not_yet_rewarded) > 0:
                         most_recent = teacher_agent.not_yet_rewarded[-1]
                         if len(most_recent) == 3:
@@ -310,9 +235,7 @@ if __name__ == "__main__":
                 else:
                     not_yet_remembered_list = [teacher_state, teacher_action_index, done]
                     teacher_agent.not_yet_rewarded.append(not_yet_remembered_list)
-                #print ("length of move list still after popping: ", str(len(moves_list)))
                 moves_list.append(actually_made_move)
-                #print ("length of move list after appending: ", str(len(moves_list)))
                 deep.setposition(moves_list)
             ''' Teacher Q-learning '''
 

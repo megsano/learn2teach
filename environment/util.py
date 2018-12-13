@@ -22,29 +22,28 @@ Output: value of the move
 '''
 
 def get_move_value(move_index, moves_list, possible_actions, deep):
-    before_output = deep.bestmove() # computing score of board before student agent makes action
+    before_output = deep.bestmove()
     before_output_list = before_output['info'].split(" ")
     if len(moves_list) % 2 == 1:
         multiplier = -1.0
     else:
         multiplier = 1.0
-    score_before_that_move = multiplier * int(before_output_list[9]) # changed from 9
+    score_before_that_move = multiplier * int(before_output_list[9])
     move_tuple = possible_actions[move_index]
     move_for_stockfish = game.render(119-move_tuple[0]) + game.render(119-move_tuple[1])
     moves_list.append(move_for_stockfish)
-    deep.setposition(moves_list) #SYNTAX!!
+    deep.setposition(moves_list)
     after_output = deep.bestmove()
     after_output_list = after_output['info'].split(" ")
-    score_after_that_move = (-1) * multiplier * int(after_output_list[9]) # changed from 9
+    score_after_that_move = (-1) * multiplier * int(after_output_list[9])
     last_thing = moves_list.pop()
-    deep.setposition(moves_list) #Does set and reset deep position -- probably not buggy, but look into
+    deep.setposition(moves_list)
     return score_after_that_move - score_before_that_move
 
 '''
-Convert "e2" to "85", that kind of thing
+Convert stockfish encoding to game.py encoding
 '''
 def convert_to_nums(algebra_str):
-    #print("algebra str: ", algebra_str)
     letter = algebra_str[0]
     number = algebra_str[1]
     letter_as_num = ord(letter) - ord("a") + 1
@@ -53,17 +52,15 @@ def convert_to_nums(algebra_str):
         return 10 * new_number + letter_as_num
     except:
         return None
-    #print("converted: ", 10 * new_number + letter_as_num)
 
 '''
 Get teacher state
 '''
-def getTeacherState(suggested_move_index, valid_move_indices, possible_actions, moves_list, deep): #UPDATE PARAMS IN MAIN!!!
+def getTeacherState(suggested_move_index, valid_move_indices, possible_actions, moves_list, deep):
     had_a_nan_in_teacher_state = False
     state = []
     # state 1: difference between suggested move value and optimal move value
-    output = deep.bestmove() ## something else
-    #print("optimal move now: ", output['move'])
+    output = deep.bestmove()
     best_move = (convert_to_nums(output['move'][0:2]),convert_to_nums(output['move'][2:]))
     if best_move[0] == None or best_move[1] == None:
         best_move_index = random.choice(valid_move_indices)
@@ -85,26 +82,21 @@ def getTeacherState(suggested_move_index, valid_move_indices, possible_actions, 
     optimal_piece_move_indices = []
     #piece_to_move_loc = best_move[0:2]# in the form of
     reformatted_loc = best_move[0]# e2 --> 85
-    #print ("whether best move is in valid move indices", best_move_index in valid_move_indices)
     for move_index in valid_move_indices:
         if possible_actions[move_index][0] == reformatted_loc:
             optimal_piece_move_indices.append(move_index)
     if len(optimal_piece_move_indices) == 0:
         print ("length of optimal piece move indices: ", 0)
         print (valid_move_indices)
-    #print (optimal_piece_move_indices)
     optimal_piece_move_values = []
     for optimal_piece_move_index in optimal_piece_move_indices:
         optimal_piece_move_values.append(get_move_value(optimal_piece_move_index, moves_list, possible_actions, deep))
     if len(optimal_piece_move_values) == 0:
         had_a_nan_in_teacher_state = True
     state.append(np.std(np.array(optimal_piece_move_values)))
-    # state 5: number of moves since partial hint or no hint
-    #state.append(teacher_agent.moves_since_hint)
     if np.isnan(state[3]):
         had_a_nan_in_teacher_state = True
     state = np.reshape(state, (1,4))
-    #print('teacher state: ', state)
     return state, optimal_piece_move_indices, best_move_index, had_a_nan_in_teacher_state
 
 
@@ -143,25 +135,13 @@ Retrieves the king's position at any given board state.
 '''
 
 def getKingPos(boardString, piece_letter):
-    #print(piece_letter)
-    # boardString_list = []
-    # for row in position.board.split("\n"):
-    #     if row != "" and not row.isspace():
-    #         boardString_list.append(row)
-    # boardString = "".join(boardString_list)#position.board.split("\n")[3:11])
-    # #print("length of board string before reducing empty spaces: ", str(len(boardString)))
-    # boardString = boardString.replace(" ", "")
-    #print(splitted)
     if len(boardString) != 64:
         print("boardString length = " + str(len(boardString)))
-    #print ("boardString: ", boardString)
     splitted = []
     for i in range(8):
         splitted.append(boardString[8 * i : 8 * i + 8])
-    for l, line in enumerate(splitted): # "".join(board.split('\n')[:-1])
-        #print(line)
+    for l, line in enumerate(splitted):
         for col in range(8):
-            #print (line[col])
             if line[col] == piece_letter:
                 return (l, col)
     return ("nope", "nope")
@@ -173,24 +153,16 @@ def inCheck(position, checkCurrentPlayer):
     pieceLetters = ["P", "N", "B", "R", "Q", "K"]
     king = 'k'
     if checkCurrentPlayer:
-        pieceLetters = ["p", "n", "b", "r", "q", "k"] ## case is same for opponent and king
+        pieceLetters = ["p", "n", "b", "r", "q", "k"]
         king = 'K'
-    #print(king)
-    # pieceLetters = ["p", "n", "b", "r", "q", "k"]
-    # if not checkCurrentPlayer:
-    #     pieceLetters = ["P", "N", "B", "R", "Q", "K"] ## case is same for opponent and king
-     ## changed from pieceLetters[-1] # it's when it's lowercase that getKingPos error happens
-    #print(position.board.split("\n"))
     boardString_list = []
     for row in position.board.split("\n"):
         if row != "" and not row.isspace():
             boardString_list.append(row)
-    boardString = "".join(boardString_list)#position.board.split("\n")[3:11])
-    #print("length of board string before reducing empty spaces: ", str(len(boardString)))
+    boardString = "".join(boardString_list)
     boardString = boardString.replace(" ", "")
-    #print("length of board string: ", str(len(boardString)))
     kRow, kCol = getKingPos(boardString, king)
-    if kRow == "nope": ## somewhat big change
+    if kRow == "nope":
         return True
     for row in range(8):
         for col in range(8):
@@ -198,14 +170,11 @@ def inCheck(position, checkCurrentPlayer):
             piece = boardString[pieceIndex]
             if piece == pieceLetters[0]:
                 if row + 1 == kRow and abs(col - kCol) == 1:
-                    # print(pieceLetters[0])
                     return True
             if piece == pieceLetters[1]:
                 if abs(row - kRow) == 2 and abs(col - kCol) == 1:
-                    # print(pieceLetters[1])
                     return True
                 if abs(row - kRow) == 1 and abs(col - kCol) == 2:
-                    # print(pieceLetters[1])
                     return True
             if piece == pieceLetters[2] or piece == pieceLetters[4]:
                 if abs(row - kRow) == abs(col - kCol):
@@ -213,12 +182,9 @@ def inCheck(position, checkCurrentPlayer):
                     if (row - kRow) * (col - kCol) > 0:
                         start = 8 * min(row, kRow) + min(col, kCol)
                         for diagonAlley in range(abs(row - kRow) - 1):
-                            # if boardString[start + 9 * diagonAlley] != ".":
-                            #     canCheck = False
                             if boardString[start + 9 * (diagonAlley + 1)] != ".":
                                 canCheck = False
                         if canCheck == True:
-                            # print(piece)
                             return True
                     else:
                         start = 8 * min(row, kRow) + max(col, kCol)
@@ -226,7 +192,6 @@ def inCheck(position, checkCurrentPlayer):
                             if boardString[start + 7 * (diagonAlley + 1)] != ".":
                                 canCheck = False
                         if canCheck == True:
-                            # print(piece)
                             return True
             if piece == pieceLetters[3] or piece == pieceLetters[4]:
                 if row == kRow:
@@ -235,7 +200,6 @@ def inCheck(position, checkCurrentPlayer):
                         if boardString[8 * row + inBetween] != ".":
                             canCheck = False
                     if canCheck == True:
-                        # print(piece)
                         return True
                 if col == kCol:
                     canCheck = True
@@ -243,11 +207,9 @@ def inCheck(position, checkCurrentPlayer):
                         if boardString[8 * inBetween + col] != ".":
                             canCheck = False
                     if canCheck == True:
-                        # print(piece)
                         return True
             if piece == pieceLetters[5]:
                 if abs(row - kRow) <= 1 and abs(col - kCol) <= 1:
-                    # print(pieceLetters[5])
                     return True
     return False
 
@@ -285,20 +247,6 @@ def flip_move(dqn_move):
     new_dqn_move = (int(str(newFirstPosRow) + str(newFirstPosCol)), int(str(newSecondPosRow)+str(newSecondPosCol)))
     return new_dqn_move
 
-'''Had a nice shirt on Wednesday:'''
-def percy_liang(move_list, old_pos):
-    new_pos = game.Position(initial, 0, (True,True), (True,True), 0, 0) # game.py stuff
-    for i in range(len(move_list)):
-        player_bool = not i % 2 == 0 # used to be not
-        move_string = move_list[i]
-        move_nums = (convert_to_nums(move_string[0:2]),convert_to_nums(move_string[2:]))
-        new_pos = new_pos.move(move_nums, player_bool)
-    # print("move list passed into percy: ")
-    # print(move_list)
-    # print("new: ", new_pos)
-    # print("old", old_pos)
-    return new_pos.board == old_pos.board
-
 def get_material_difference(posi):
     student_material = 0
     opponent_material = 0
@@ -329,7 +277,7 @@ def get_material_difference(posi):
 
 
 def get_current_score(deep):
-    before_output = deep.bestmove() # computing score of board before student agent makes action
+    before_output = deep.bestmove()
     before_output_list = before_output['info'].split(" ")
     score_before_that_move = int(before_output_list[9])
     return score_before_that_move

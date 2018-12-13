@@ -42,11 +42,14 @@ if __name__ == "__main__":
     # Creating a list of all possible actions of student agent on the chessboard
     possible_actions = util.get_possible_actions(student_action_size)
 
-    for e in range(250):
+    filename = 'save/with_teacher_' + str(61) + '.h5'
+    student_agent.load(filename)
+    for e in range(61, 250):
         if e % 25 == 0: # 10 games per student
             filename = 'save/with_teacher_' + str(int((e / 25 + 1) * 25)) + '.h5'
             student_agent.load(filename)
             print('testing {}: {}'.format(filename, str(int((e / 25 + 1) * 25))))
+        print("filename: ", filename)
         start_time = time.time()
         print_game = (e + 1) % 25 == 0
         check_mated_yet = False

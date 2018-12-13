@@ -67,11 +67,10 @@ if __name__ == "__main__":
             state = util.toBit(pos)
             before_output_list = deep.bestmove()['info'].split(" ")
             if 'mate' in before_output_list:
-                #print("mate imminent")
                 if util.inCheck(pos, True):
                     print("You lost, but you're getting there little one")
                 else:
-                    print("mate imminent") #changed from printing stalemate, which is wrong
+                    print("mate imminent")
                 end_time = time.time()
                 duration = end_time - start_time
                 print("episode: {}/{}, number of rounds: {}, score: {}, e: {:.2}, time : {}"
@@ -85,7 +84,7 @@ if __name__ == "__main__":
                 done = True
                 break
             else:
-                score_before_model_move = (-1)*int(before_output_list[9]) # changed from 9
+                score_before_model_move = (-1)*int(before_output_list[9])
 
             # get possible valid moves of student
             possibly_valid_moves = [m for m in pos.gen_moves(False)]
@@ -129,7 +128,6 @@ if __name__ == "__main__":
 
                 # get RANDOM teacher action
                 teacher_action_index = teacher_agent.random_teacher_act()
-                #teacher_action_index = teacher_agent.act(teacher_state)
                 hints_for_game[teacher_action_index] += 1
                 if len(optimal_piece_move_indices_maybe) == 0:
                     teacher_action_index = 0
@@ -162,14 +160,10 @@ if __name__ == "__main__":
 
             # STUDENT ACTUALLY ACTS #
             dqn_move = possible_actions[dqn_move_index]
-            # flip move
             flipped_dqn_move = util.flip_move(dqn_move)
-            pos = pos.move(dqn_move, True) ## used to be new_dqn_move
-            # update stockfish based on DQN action
+            pos = pos.move(dqn_move, True)
             dqn_move_stockfish = game.render(119-flipped_dqn_move[0]) + game.render(119-flipped_dqn_move[1]) ## used to be dqn_move
             moves_list.append(dqn_move_stockfish)
-            #print("dqn move stockfish: ", str(dqn_move_stockfish))
-            #print(moves_list)
             deep.setposition(moves_list)
 
 

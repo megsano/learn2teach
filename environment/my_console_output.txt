@@ -1,7 +1,0 @@
-Script started on Fri Nov 23 07:27:43 2018
-[?1034hbash-3.2$ 
-bash-3.2$ 
-bash-3.2$ exit 1
-exit
-
-Script done on Fri Nov 23 07:52:28 2018
