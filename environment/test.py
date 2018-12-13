@@ -24,7 +24,7 @@ if __name__ == "__main__":
     Modes
     - if with_teacher is set to True, then train with teacher
     '''
-    with_teacher = False
+    with_teacher = True
     episodes_per_student = 25
     EPISODES = 250
     student_action_size = 1856
@@ -42,11 +42,12 @@ if __name__ == "__main__":
     # Creating a list of all possible actions of student agent on the chessboard
     possible_actions = util.get_possible_actions(student_action_size)
 
-    filename = 'save/with_teacher_' + str(61) + '.h5'
-    student_agent.load(filename)
-    for e in range(61, 250):
+    for e in range(EPISODES):
         if e % 25 == 0: # 10 games per student
-            filename = 'save/with_teacher_' + str(int((e / 25 + 1) * 25)) + '.h5'
+            if with_teacher:
+                filename = 'save/with_teacher_' + str(int((e / 25 + 1) * 25)) + '.h5'
+            else:
+                filename = 'save/without_teacher_' + str(int((e / 25 + 1) * 25)) + '.h5'
             student_agent.load(filename)
             print('testing {}: {}'.format(filename, str(int((e / 25 + 1) * 25))))
         print("filename: ", filename)

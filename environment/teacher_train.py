@@ -20,11 +20,10 @@ from pystockfish import *
 ###############################################################################
 
 if __name__ == "__main__":
-    with_teacher = True
     episodes_per_student = 1
-    EPISODES = 200
+    EPISODES = 500
     student_action_size = 1856
-    start_student = 125
+    start_student = 0
     teacher_agent = models.TeacherAgent()
     teacher_agent.load('save/teacher.h5')
     student_agent = models.StudentAgent()
@@ -33,7 +32,7 @@ if __name__ == "__main__":
     # Creating a list of all possible actions of student agent on the chessboard
     possible_actions = util.get_possible_actions(student_action_size)
 
-    for e in range(200, 401):
+    for e in range(EPISODES):
         if e % 40 == 0: # 10 games per student
             filename = 'save/without_teacher_' + str(int((e / 40) * 25)) + '.h5'
             student_agent.load(filename)

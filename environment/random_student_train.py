@@ -26,18 +26,11 @@ if __name__ == "__main__":
     '''
     with_teacher = True
     episodes_per_student = 1
-    EPISODES = 251
+    EPISODES = 250
     student_action_size = 1856
-    start_episode = 0
     teacher_agent = models.TeacherAgent()
     student_agent = models.StudentAgent()
-    student_agent.load('save/with_random_50.h5')
     teacher_agent.load('save/teacher.h5')
-    # if with_teacher:
-    #     filename = 'save/with_teacher_' + str(start_episode) + '.h5'
-    # else:
-    #     filename = 'save/without_teacher_' + str(start_episode) + '.h5'
-    # student_agent.load(filename)
     batch_size = 8
     scores_list = []
     hints_list = []
@@ -46,7 +39,7 @@ if __name__ == "__main__":
     # Creating a list of all possible actions of student agent on the chessboard
     possible_actions = util.get_possible_actions(student_action_size)
 
-    for e in range(51, EPISODES):
+    for e in range(EPISODES):
         partial_diffs_for_game = []
         hints_for_game = {0:0, 1:0, 2:0}
         start_time = time.time()
@@ -279,11 +272,6 @@ if __name__ == "__main__":
             # if len(teacher_agent.memory) > batch_size:
             #     teacher_agent.replay(batch_size)
 
-        # save teacher every name
-        # if with_teacher:
-        #     student_name = 'save/with_teacher_' + str(e) + '.h5'
-        # else:
-        #     student_name = 'save/without_teacher_' + str(e) + '.h5'
         student_name = 'save/with_random_' + str(e) + '.h5'
         print("saving " + student_name)
         student_agent.save(student_name)

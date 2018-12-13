@@ -104,7 +104,6 @@ def getTeacherState(suggested_move_index, valid_move_indices, possible_actions, 
 Converts the 64-character representation of the board state used in
 game.py to a 64-bit representation.
 '''
-
 def toBit(pos):
     board = pos.board
     wc = pos.wc
@@ -133,7 +132,6 @@ def toBit(pos):
 '''
 Retrieves the king's position at any given board state.
 '''
-
 def getKingPos(boardString, piece_letter):
     if len(boardString) != 64:
         print("boardString length = " + str(len(boardString)))
@@ -213,7 +211,9 @@ def inCheck(position, checkCurrentPlayer):
                     return True
     return False
 
-###########################
+'''
+Retrieves possible actions of the student
+'''
 def get_possible_actions(student_action_size):
     possible_actions = []
     for x_prev in range(2,10):
@@ -232,7 +232,9 @@ def get_possible_actions(student_action_size):
     return possible_actions
 
 
-
+'''
+Flips move in algebraic (Stockfish) notation
+'''
 def flip_move(dqn_move):
     firstPos = dqn_move[0]
     firstPosRow = int(str(firstPos)[0])
@@ -247,6 +249,9 @@ def flip_move(dqn_move):
     new_dqn_move = (int(str(newFirstPosRow) + str(newFirstPosCol)), int(str(newSecondPosRow)+str(newSecondPosCol)))
     return new_dqn_move
 
+'''
+Computes material difference given a board state
+'''
 def get_material_difference(posi):
     student_material = 0
     opponent_material = 0
@@ -276,17 +281,9 @@ def get_material_difference(posi):
     return student_material - opponent_material
 
 
-def get_current_score(deep):
-    before_output = deep.bestmove()
-    before_output_list = before_output['info'].split(" ")
-    score_before_that_move = int(before_output_list[9])
-    return score_before_that_move
-
-
-###############################################################################
-# Variables and constants for sunfish
-###############################################################################
-
+'''
+Variables and constants for sunfish
+'''
 piece = { 'P': 100, 'N': 280, 'B': 320, 'R': 479, 'Q': 929, 'K': 60000 }
 pst = {
     'P': (   0,   0,   0,   0,   0,   0,   0,   0,

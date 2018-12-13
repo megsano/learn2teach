@@ -26,9 +26,8 @@ if __name__ == "__main__":
     '''
     with_teacher = True
     episodes_per_student = 1
-    EPISODES = 85
+    EPISODES = 250
     student_action_size = 1856
-    start_episode = 168
     teacher_agent = models.TeacherAgent()
     student_agent = models.StudentAgent()
     teacher_agent.load('save/teacher.h5')
@@ -46,7 +45,7 @@ if __name__ == "__main__":
     # Creating a list of all possible actions of student agent on the chessboard
     possible_actions = util.get_possible_actions(student_action_size)
 
-    for e in range(start_episode + 1, start_episode + 1 + EPISODES + 1):
+    for e in range(250):
         partial_diffs_for_game = []
         hints_for_game = {0:0, 1:0, 2:0}
         start_time = time.time()
