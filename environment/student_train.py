@@ -124,7 +124,7 @@ if __name__ == "__main__":
             ''' TEACHER '''
             if with_teacher:
                 copy_moves_list = moves_list[:]
-                teacher_state, optimal_piece_move_indices_maybe, best_move_index, had_a_nan = util.getTeacherState(dqn_move_index, valid_move_indices, possible_actions, copy_moves_list, deep)
+                teacher_state, optimal_piece_move_indices_maybe, best_move_index, had_a_nan = util.get_teacher_state(dqn_move_index, valid_move_indices, possible_actions, copy_moves_list, deep)
                 if print_game:
                     print('teacher state: ', teacher_state)
                 if had_a_nan:

@@ -56,7 +56,7 @@ def convert_to_nums(algebra_str):
 '''
 Get teacher state
 '''
-def getTeacherState(suggested_move_index, valid_move_indices, possible_actions, moves_list, deep):
+def get_teacher_state(suggested_move_index, valid_move_indices, possible_actions, moves_list, deep):
     had_a_nan_in_teacher_state = False
     state = []
     # state 1: difference between suggested move value and optimal move value
