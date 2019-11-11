@@ -14,7 +14,9 @@ import game
 from pystockfish import *
 from util import *
 
-########### TEACHING AGENT #############################
+'''
+Teacher Agent
+'''
 
 class TeacherAgent:
     def __init__(self, state_size=4, action_size=3):
@@ -101,9 +103,10 @@ class TeacherAgent:
     def save(self, name):
         self.model.save_weights(name)
 
-###############################################################################
-# DQN Model
-###############################################################################
+
+'''
+Student Agent 
+'''
 
 class StudentAgent:
     def __init__(self, state_size=18, action_size=1856):
